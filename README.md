@@ -1,7 +1,5 @@
 # Handy
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
-
 📖 **Languages / Языки:** English · [Русская версия ↓](#-русская-версия)
 
 **A free, open source, and extensible speech-to-text _and_ speech-translation application that works completely offline.**
