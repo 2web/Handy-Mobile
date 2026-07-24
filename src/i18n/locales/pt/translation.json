@@ -358,7 +358,7 @@
       },
       "customWords": {
         "title": "Palavras Personalizadas",
-        "description": "Adicione palavras que são frequentemente mal ouvidas ou mal escritas durante a transcrição. O sistema irá automaticamente corrigir palavras semelhantes para corresponder à sua lista.",
+        "description": "Ajude os modelos compatíveis a reconhecer nomes e termos especializados. A correção aproximada está atualmente limitada a palavras que usam letras de A–Z e números.",
         "placeholder": "Adicionar uma palavra",
         "add": "Adicionar",
         "remove": "Remover {{word}}",
@@ -617,6 +617,15 @@
   "appLanguage": {
     "title": "Idioma da Aplicação",
     "description": "Alterar o idioma da interface do Handy"
+  },
+  "theme": {
+    "title": "Tema do aplicativo",
+    "description": "Escolha se o Handy segue o tema do sistema ou permanece claro ou escuro",
+    "options": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Escuro"
+    }
   },
   "overlay": {
     "transcribing": "Transcrevendo...",

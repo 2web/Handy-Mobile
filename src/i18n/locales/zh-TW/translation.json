@@ -358,7 +358,7 @@
       },
       "customWords": {
         "title": "自訂詞彙",
-        "description": "新增經常被誤聽或拼寫錯誤的詞彙。系統會自動將發音相似的詞彙修正為您列表中的詞彙",
+        "description": "協助支援的模型辨識名稱和專業術語。目前，模糊修正僅適用於使用 A–Z 字母和數字的詞語。",
         "placeholder": "新增詞彙",
         "add": "新增",
         "remove": "刪除 {{word}}",
@@ -617,6 +617,15 @@
   "appLanguage": {
     "title": "應用程式語言",
     "description": "變更 Handy 介面的語言"
+  },
+  "theme": {
+    "title": "應用程式主題",
+    "description": "選擇 Handy 跟隨系統主題，或維持淺色或深色",
+    "options": {
+      "system": "跟隨系統",
+      "light": "淺色",
+      "dark": "深色"
+    }
   },
   "overlay": {
     "transcribing": "正在轉錄...",

@@ -208,7 +208,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // Choose the appropriate initial icon based on theme
     let initial_icon_path = tray::get_icon_path(initial_theme, tray::TrayIconState::Idle);
 
-    let tray = TrayIconBuilder::new()
+    let mut tray_builder = TrayIconBuilder::new()
         .icon(
             Image::from_path(
                 app_handle
@@ -219,8 +219,38 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             .unwrap(),
         )
         .tooltip(tray::tray_tooltip())
-        .show_menu_on_left_click(true)
-        .icon_as_template(true)
+        .icon_as_template(true);
+
+    // Windows notification-area convention: left click opens the app, right click
+    // shows the menu. Elsewhere (macOS menu bar, Linux) the menu stays on left click.
+    #[cfg(target_os = "windows")]
+    {
+        tray_builder = tray_builder
+            .show_menu_on_left_click(false)
+            .on_tray_icon_event(|tray, event| {
+                use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+                let opens_window = matches!(
+                    event,
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } | TrayIconEvent::DoubleClick {
+                        button: MouseButton::Left,
+                        ..
+                    }
+                );
+                if opens_window {
+                    show_main_window(tray.app_handle());
+                }
+            });
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        tray_builder = tray_builder.show_menu_on_left_click(true);
+    }
+
+    let tray = tray_builder
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
                 show_main_window(app);
@@ -328,6 +358,44 @@ fn trigger_update_check(app: AppHandle) -> Result<(), String> {
 fn show_main_window_command(app: AppHandle) -> Result<(), String> {
     show_main_window(&app);
     Ok(())
+}
+
+/// Convert an unexpected panic on the headless worker into a normal CLI
+/// failure. Without this guard the Tauri event loop remains alive after the
+/// worker exits, leaving `--transcribe-file` hung indefinitely.
+fn run_headless_guarded<F>(operation: F) -> i32
+where
+    F: FnOnce() -> i32,
+{
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(operation)) {
+        Ok(code) => code,
+        Err(payload) => {
+            let message = if let Some(message) = payload.downcast_ref::<&str>() {
+                (*message).to_string()
+            } else if let Some(message) = payload.downcast_ref::<String>() {
+                message.clone()
+            } else {
+                "unknown panic".to_string()
+            };
+            eprintln!("error: headless transcription panicked: {message}");
+            1
+        }
+    }
+}
+
+#[cfg(test)]
+mod headless_guard_tests {
+    use super::run_headless_guarded;
+
+    #[test]
+    fn preserves_normal_exit_codes() {
+        assert_eq!(run_headless_guarded(|| 2), 2);
+    }
+
+    #[test]
+    fn converts_worker_panics_to_runtime_failures() {
+        assert_eq!(run_headless_guarded(|| panic!("simulated failure")), 1);
+    }
 }
 
 /// Headless one-shot transcription for the `--transcribe-file` / `--list-devices`
@@ -539,6 +607,7 @@ pub fn run(cli_args: CliArgs) {
             shortcut::change_audio_feedback_setting,
             shortcut::change_audio_feedback_volume_setting,
             shortcut::change_sound_theme_setting,
+            shortcut::change_theme_setting,
             shortcut::change_start_hidden_setting,
             shortcut::change_autostart_setting,
             shortcut::change_translate_to_english_setting,
@@ -780,7 +849,7 @@ pub fn run(cli_args: CliArgs) {
                 let handle = app_handle.clone();
                 let args = cli_args.clone();
                 std::thread::spawn(move || {
-                    let code = run_headless_transcription(&handle, &args);
+                    let code = run_headless_guarded(|| run_headless_transcription(&handle, &args));
                     // Drop the loaded engine before teardown: ggml-metal's global
                     // device free asserts (SIGABRT) if a model's Metal resources
                     // are still alive at C++ static-destructor time.
@@ -816,6 +885,13 @@ pub fn run(cli_args: CliArgs) {
             win_builder.build()?;
 
             let mut settings = get_settings(app.handle());
+
+            // Apply the persisted appearance theme to the Windows title bar before
+            // the window is shown, so it matches the in-app palette without a flash
+            // of the wrong theme. On macOS/Linux, Tauri themes are app-wide and
+            // would also affect windows that intentionally keep the system theme.
+            #[cfg(target_os = "windows")]
+            shortcut::apply_window_theme(app.handle(), settings.theme);
 
             // CLI --debug flag overrides debug_mode and log level (runtime-only, not persisted)
             if cli_args.debug {
