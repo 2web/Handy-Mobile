@@ -1,5 +1,7 @@
 # Build Instructions
 
+📖 **Languages / Языки:** English · [Русская версия ↓](#-русская-версия--сборка-из-исходников)
+
 This guide covers how to set up the development environment and build Handy from source across different platforms.
 
 ## Prerequisites
@@ -247,3 +249,96 @@ bun run tauri dev
 # Or compile a release binary without the installer/signing step:
 bun run tauri build --no-bundle
 ```
+
+---
+
+## 🇷🇺 Русская версия — сборка из исходников
+
+> Полная англоязычная инструкция — выше. Здесь переведены основные шаги и самые частые проблемы. **Команды не переводятся** — копируйте их как есть.
+
+### Требования
+
+**Все платформы:**
+
+- [Rust](https://rustup.rs/) (последний stable)
+- пакетный менеджер [Bun](https://bun.sh/)
+- [требования Tauri](https://tauri.app/start/prerequisites/)
+
+**macOS:**
+
+- Xcode Command Line Tools: `xcode-select --install`
+- **Intel Mac (x86_64):** готовых бинарников ONNX Runtime нет — ставится через Homebrew с динамической линковкой:
+  ```bash
+  brew install onnxruntime
+  ORT_LIB_LOCATION=$(brew --prefix onnxruntime)/lib ORT_PREFER_DYNAMIC_LINK=1 bun run tauri dev
+  ```
+  Те же переменные окружения — и для production-сборки (`tauri build`).
+
+**Windows:**
+
+- Microsoft C++ Build Tools: Visual Studio 2019/2022 с компонентами C++ (или Build Tools 2019/2022)
+- [CMake](https://cmake.org/download/) (должен быть в `PATH`): `winget install Kitware.CMake`
+- [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) от LunarG — нужен для сборки Vulkan-бэкенда (`vulkan-shaders-gen` требует заголовки SDK и `glslc`): `winget install KhronosGroup.VulkanSDK`
+  - После установки откройте **новый терминал**, чтобы подхватилась переменная `VULKAN_SDK`.
+
+> **Про лимит пути в 260 символов на Windows.** Раньше он ломал нативную сборку Vulkan почти в любом чекауте. Начиная с `transcribe-cpp` 0.1.3 это обходится автоматически (сборка идёт через короткий NTFS-junction, без прав администратора). Если ошибки лимита пути всё же появятся — см. раздел про `MSB3491 / FTK1011 / MSB6003` ниже.
+
+**Linux:** нужны build-essentials, ALSA dev-библиотеки и др. Точные пакеты для Ubuntu/Debian, Fedora/RHEL и Arch — в англоязычной части выше (команды `apt` / `dnf` / `pacman` одинаковы независимо от языка).
+
+### Шаги сборки
+
+```bash
+# 1. Клонировать репозиторий
+git clone git@github.com:cjpais/Handy.git
+cd Handy
+
+# 2. Установить зависимости
+bun install
+
+# 3. Запустить dev-сервер
+bun tauri dev
+
+# 4. Собрать production-сборку
+bun run tauri build
+```
+
+`tauri build` компилирует release-бинарник и собирает платформенные пакеты (deb/rpm/AppImage на Linux, dmg на macOS, msi на Windows).
+
+> ⚠️ **Первая сборка долгая** (десятки минут): подтягивается форк tauri и компилируются whisper/onnx/Vulkan из исходников. Последующие сборки инкрементальные и быстрые.
+
+### Установка на Linux из исходников
+
+Голый бинарник (`src-tauri/target/release/handy`) сам по себе не запустится — ему нужны ресурсные файлы Tauri (иконки трея, звуки, VAD-модель) рядом по ожидаемому пути. Проще всего установить из собранного **deb-пакета** (работает на любом дистрибутиве) — команды в англоязычной части выше.
+
+### Устранение неполадок (ключевое)
+
+**Windows: сборка падает с ошибками лимита пути (`MSB3491` / `FTK1011` / `MSB6003`).**
+
+Это **не** проблема кода или тулчейна — это легаси-лимит Windows в 260 символов (`MAX_PATH`), который переполняет вложенное дерево сборки Vulkan-шейдеров поверх и без того глубоких путей Cargo. Начиная с `transcribe-cpp` 0.1.3 обходится автоматически (сборка через короткий junction в `%LOCALAPPDATA%\tcs`). Важно: включение «длинных путей» Windows тут **не помогает надёжно** — нативный `FileTracker` MSBuild игнорирует этот флаг, поэтому решение именно junction, а не флаг реестра.
+
+Если ошибки всё же появляются (junction заблокирован политикой ФС/компании, либо чекаут слишком глубокий) — задайте короткую целевую директорию Cargo:
+
+```powershell
+# Для текущей сессии:
+$env:CARGO_TARGET_DIR = "C:\h"
+
+# Или на постоянной основе для всех терминалов (перенаправит вывод сборки
+# ВСЕХ ваших Rust-проектов, не только Handy):
+[Environment]::SetEnvironmentVariable('CARGO_TARGET_DIR', 'C:\h', 'User')
+```
+
+Артефакты попадут в `C:\h\release\...`. Если задавали переменную «на постоянной основе» — откройте **новый терминал** (её подхватывают только заново запущенные процессы), затем `bun run tauri dev` / `bun run tauri build` работают как обычно.
+
+**Windows: `tauri build` падает на этапе бандлинга с `program not found`.**
+
+Если сборка доходит до `Built application at: ...\handy.exe`, а затем падает на `Signing ... failed to bundle project 'program not found'` — это шаг подписи кода: `tauri.conf.json` настроен на кастомную команду подписи (`trusted-signing-cli`, Azure Trusted Signing), которая существует только в релизном CI. Локально она не нужна:
+
+```powershell
+# Разработка (без бандлинга и подписи):
+bun run tauri dev
+
+# Или release-бинарник без установщика/подписи:
+bun run tauri build --no-bundle
+```
+
+**Linux: сборка AppImage падает на Arch / rolling-release** — известная проблема со старым `strip` внутри `linuxdeploy`; deb/rpm/бинарник при этом собираются нормально (обход: `bun run tauri build -- --bundles deb`). Подробности — в англоязычной части выше.

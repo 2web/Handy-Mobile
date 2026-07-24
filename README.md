@@ -2,9 +2,14 @@
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
-**A free, open source, and extensible speech-to-text application that works completely offline.**
+📖 **Languages / Языки:** English · [Русская версия ↓](#-русская-версия)
+
+**A free, open source, and extensible speech-to-text _and_ speech-translation application that works completely offline.**
+_Бесплатное, открытое и расширяемое приложение для распознавания **и перевода** речи, работающее полностью офлайн._
 
 Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
+
+This fork goes one step further: Handy is no longer just speech-to-text — it can also **translate your speech into another language on the fly**, still fully offline, using a local LLM. See [Speech Translation](#-speech-translation-offline) below.
 
 ## Why Handy?
 
@@ -31,6 +36,67 @@ The process is entirely local:
   - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
   - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
 - Works on Windows, macOS, and Linux
+
+## 🈯 Speech Translation (Offline)
+
+> This fork adds a dedicated **Transcribe with Translation** mode on top of Handy's dictation pipeline.
+
+Speak in one language and have Handy paste the text **translated into a language of your choice** — fully offline. Unlike Whisper's built-in translate task (which only ever targets English), this mode can translate into **any** language by reusing Handy's LLM post-processing pipeline with a local model.
+
+**How it works:**
+
+1. **Press** the translation shortcut and speak
+2. Handy **transcribes** your speech with your selected Whisper/Parakeet model
+3. The transcript is sent to a **local LLM** (via Ollama / LM Studio) with a translation instruction
+4. Only the **translation** is pasted into the active app
+
+**Default shortcut:** `Ctrl+Alt+Space` (Windows/Linux) · `Option+Ctrl+Space` (macOS)
+
+**Configuration** lives in **Settings → Post-Processing**:
+
+- **Provider:** `Custom` (points to your local LLM, e.g. Ollama at `http://localhost:11434/v1`)
+- **Model:** any chat model you pulled in Ollama (e.g. `qwen2.5:3b`)
+- **Translation → Target language:** the language you want to translate into
+
+The translation uses the **same local LLM provider configured for post-processing**, so nothing leaves your computer. Follow the checklist below for a step-by-step setup.
+
+## ✅ Getting Started Checklist — Handy + Ollama
+
+A step-by-step checklist to go from nothing to working offline dictation **and** translation. Two **separate** models are involved:
+
+- 🗣️ a **speech-recognition (ASR) model** that lives **inside Handy** (turns your voice into text), and
+- 🌍 a **translation LLM** that lives **inside Ollama** (turns that text into another language).
+
+### Part 1 — Handy + speech recognition (dictation)
+
+- [ ] **Install Handy** — download the [latest release](https://github.com/cjpais/Handy/releases) (Windows: `winget install cjpais.Handy`; macOS: `brew install --cask handy`)
+- [ ] **Launch Handy** and grant **microphone** and **accessibility** permissions
+- [ ] **Download an ASR model inside Handy** — open **Settings → Models** and download one:
+  - **Example:** `Whisper Small` (~487 MB, needs a GPU) or **`Parakeet V3`** (~478 MB, runs on CPU, auto-detects language) — Parakeet is the easiest starting point
+- [ ] **Test dictation** — click into any text field, press the dictation shortcut (`Ctrl+Space`), speak, release — your words should appear
+
+### Part 2 — Ollama + translation model
+
+- [ ] **Install Ollama** — from [ollama.com](https://ollama.com) (Windows: `winget install Ollama.Ollama`). It runs a local server at `http://localhost:11434`
+- [ ] **Download a translation LLM in Ollama** — in a terminal:
+  ```bash
+  ollama pull qwen2.5:3b     # ~1.9 GB, strong multilingual translation
+  ```
+  (alternatives: `llama3.1:8b`, `gemma2:2b`, `hermes3:8b`)
+- [ ] **Check Ollama is up:**
+  ```bash
+  curl http://localhost:11434/v1/models
+  ```
+
+### Part 3 — Connect them and translate
+
+- [ ] In Handy: **Settings → Post-Processing → Provider** → choose **`Custom`**
+- [ ] **Base URL** → `http://localhost:11434/v1` · **API Key** → leave **empty**
+- [ ] **Model** → click ↻ refresh and pick `qwen2.5:3b` (or type it)
+- [ ] **Translation → Target language** → choose your target (e.g. German)
+- [ ] **Test translation** — click into a text field, press `Ctrl+Alt+Space`, speak in your language, release — the **translation** should be pasted
+
+> 💡 The ASR model (Handy) and the translation LLM (Ollama) are independent. Dictation works without Ollama; translation additionally needs Ollama running with a pulled model.
 
 ## Quick Start
 
@@ -506,3 +572,107 @@ Handy is open-source software, but the Handy name, logo, icon, and brand assets 
 - **Silero** for great lightweight VAD
 - **Tauri** team for the excellent Rust-based app framework
 - **Community contributors** helping make Handy better
+
+---
+
+## 🇷🇺 Русская версия
+
+> Полная англоязычная документация — выше. Здесь переведены основные разделы и добавлены разделы про оффлайн-перевод и пошаговый запуск. Команды, пути и названия настроек в приложении одинаковы для всех языков.
+
+### Handy
+
+**Бесплатное, открытое и расширяемое приложение для распознавания _и перевода_ речи, работающее полностью офлайн.**
+
+Handy — кроссплатформенное десктоп-приложение для простого и приватного распознавания речи. Нажмите шорткат, скажите фразу — и текст появится в любом текстовом поле. Всё происходит на вашем компьютере, без отправки данных в облако.
+
+Этот форк идёт дальше: Handy теперь не только распознаёт речь, но и умеет **переводить сказанное на другой язык на лету** — по-прежнему полностью офлайн, с помощью локальной LLM. См. раздел [Перевод речи (оффлайн)](#-перевод-речи-оффлайн) ниже.
+
+### Почему Handy?
+
+- **Бесплатно** — доступные инструменты должны быть у всех, а не за пейволлом
+- **Открытый код** — вместе можно построить больше: дорабатывайте Handy под себя и вносите вклад
+- **Приватно** — ваш голос остаётся на вашем компьютере, аудио не уходит в облако
+- **Просто** — один инструмент, одна задача: распознать сказанное и вставить в текстовое поле
+
+### Как это работает
+
+1. **Нажмите** настраиваемый шорткат, чтобы начать/остановить запись (или используйте режим push-to-talk)
+2. **Говорите**, пока шорткат активен
+3. **Отпустите** — Handy распознаёт речь
+4. **Готово** — распознанный текст вставляется в активное приложение
+
+Полностью локально: тишина отсекается через VAD (Silero), распознавание — моделями **Whisper** (Small/Medium/Turbo/Large, с GPU-ускорением) или **Parakeet V3** (оптимизирован под CPU, автоопределение языка). Работает на Windows, macOS и Linux.
+
+### 🈯 Перевод речи (оффлайн)
+
+> Этот форк добавляет отдельный режим **«Transcribe with Translation»** поверх обычной диктовки.
+
+Говорите на одном языке — Handy вставит текст, **переведённый на выбранный вами язык**, полностью офлайн. В отличие от встроенного перевода Whisper (только на английский), этот режим переводит на **любой** язык, переиспользуя пайплайн post-processing с локальной LLM.
+
+**Как работает:**
+
+1. Нажмите шорткат перевода и говорите
+2. Handy распознаёт речь выбранной моделью (Whisper/Parakeet)
+3. Текст уходит в **локальную LLM** (через Ollama / LM Studio) с инструкцией на перевод
+4. В активное приложение вставляется **только перевод**
+
+**Шорткат по умолчанию:** `Ctrl+Alt+Space` (Windows/Linux) · `Option+Ctrl+Space` (macOS)
+
+**Настройки** — **Settings → Post-Processing**:
+
+- **Provider:** `Custom` (ваша локальная LLM, напр. Ollama на `http://localhost:11434/v1`)
+- **Model:** любая chat-модель, скачанная в Ollama (напр. `qwen2.5:3b`)
+- **Translation → Target language:** язык, на который переводить
+
+Перевод использует **тот же локальный провайдер, что и post-processing** — ничего не покидает компьютер.
+
+### ✅ Чек-лист: развернуть Handy + Ollama с нуля
+
+Задействованы **две разные модели**:
+
+- 🗣️ **модель распознавания речи (ASR)** — живёт **внутри Handy** (голос → текст)
+- 🌍 **LLM для перевода** — живёт **внутри Ollama** (текст → другой язык)
+
+#### Часть 1 — Handy и распознавание речи (диктовка)
+
+- [ ] **Установить Handy** — [последний релиз](https://github.com/cjpais/Handy/releases) (Windows: `winget install cjpais.Handy`; macOS: `brew install --cask handy`)
+- [ ] **Запустить Handy**, выдать доступ к **микрофону** и **специальным возможностям** (accessibility)
+- [ ] **Скачать ASR-модель в самом Handy** — **Settings → Models**, скачать одну:
+  - **Пример:** `Whisper Small` (~487 МБ, нужен GPU) или **`Parakeet V3`** (~478 МБ, работает на CPU, автоопределение языка) — Parakeet проще всего для старта
+- [ ] **Проверить диктовку** — поставить курсор в любое текстовое поле, нажать шорткат (`Ctrl+Space`), сказать фразу, отпустить — должен появиться текст
+
+#### Часть 2 — Ollama и модель перевода
+
+- [ ] **Установить Ollama** — с [ollama.com](https://ollama.com) (Windows: `winget install Ollama.Ollama`). Поднимает локальный сервер на `http://localhost:11434`
+- [ ] **Скачать LLM для перевода** — в терминале:
+  ```bash
+  ollama pull qwen2.5:3b     # ~1.9 ГБ, сильная многоязычная модель
+  ```
+  (альтернативы: `llama3.1:8b`, `gemma2:2b`, `hermes3:8b`)
+- [ ] **Проверить, что Ollama жива:**
+  ```bash
+  curl http://localhost:11434/v1/models
+  ```
+
+#### Часть 3 — Связать и перевести
+
+- [ ] В Handy: **Settings → Post-Processing → Provider** → выбрать **`Custom`**
+- [ ] **Base URL** → `http://localhost:11434/v1` · **API Key** → оставить **пустым**
+- [ ] **Model** → нажать ↻ (refresh) и выбрать `qwen2.5:3b` (или вписать вручную)
+- [ ] **Translation → Target language** → выбрать целевой язык (напр. немецкий)
+- [ ] **Проверить перевод** — курсор в текстовое поле, нажать `Ctrl+Alt+Space`, сказать фразу на своём языке, отпустить — вставится **перевод**
+
+> 💡 ASR-модель (в Handy) и LLM перевода (в Ollama) независимы. Диктовка работает без Ollama; для перевода дополнительно нужна запущенная Ollama со скачанной моделью.
+
+### Требования к системе (кратко)
+
+- **Whisper-модели:** macOS (M-серия / Intel), Windows и Linux с GPU (Intel / AMD / NVIDIA)
+- **Parakeet V3:** только CPU, от Intel Skylake (6-е поколение) или аналога AMD; ~5× реального времени на среднем железе; автоопределение языка
+
+### Остальное
+
+Разделы про **CLI-флаги**, **известные проблемы**, **заметки для Linux**, **проверку подписей релизов** и **устранение неполадок** смотрите в англоязычной части выше — команды и пути в них одинаковы независимо от языка интерфейса.
+
+### Сборка из исходников
+
+Инструкция по сборке под конкретную платформу — в [BUILD.md](BUILD.md) (там есть русская версия).
