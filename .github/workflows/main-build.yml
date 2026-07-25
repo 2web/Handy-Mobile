@@ -48,5 +48,7 @@ jobs:
       target: ${{ matrix.target }}
       build-args: ${{ matrix.args }}
       upload-artifacts: true
-      sign-binaries: true
+      # Fork build: no code-signing / notarization / updater secrets are configured,
+      # so signing is disabled to keep CI green. Produces unsigned installers.
+      sign-binaries: false
     secrets: inherit
