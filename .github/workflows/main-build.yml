@@ -20,12 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-26"
-            args: "--target aarch64-apple-darwin"
-            target: "aarch64-apple-darwin"
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
-            target: "x86_64-apple-darwin"
+          # macOS builds removed for this fork: they require Apple Developer
+          # signing/notarization secrets we don't have, and tauri's ad-hoc
+          # signing path still tries to import an (empty) APPLE_CERTIFICATE and
+          # fails. Re-add these rows together with the signing secrets if macOS
+          # builds are needed.
           - platform: "ubuntu-22.04"
             args: "--bundles deb"
             target: "x86_64-unknown-linux-gnu"
