@@ -452,6 +452,11 @@ export const PostProcessingSettings: React.FC = () => {
           descriptionMode="tooltip"
           grouped={true}
         />
+        <ShortcutInput
+          shortcutId="translate_clipboard"
+          descriptionMode="tooltip"
+          grouped={true}
+        />
         <TranslationTargetLanguage grouped={true} />
       </SettingsGroup>
     </div>
