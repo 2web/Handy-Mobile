@@ -23,6 +23,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::Manager;
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_clipboard_manager::ClipboardExt;
 
 const CANCELLATION_POLL_INTERVAL: Duration = Duration::from_millis(25);
 
@@ -934,6 +935,65 @@ impl ShortcutAction for CancelAction {
     }
 }
 
+// Clipboard Translate Action
+//
+// One-shot action: read the current clipboard text, translate it through the
+// same local-LLM pipeline used by TranscribeMode::Translate, and paste the
+// result at the cursor. No audio, no recording — it runs entirely on key press
+// via the simple start/stop path in the shortcut handler.
+struct ClipboardTranslateAction;
+
+impl ShortcutAction for ClipboardTranslateAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!("ClipboardTranslateAction::start called for binding: {}", binding_id);
+
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            let text = match app.clipboard().read_text() {
+                Ok(text) => text,
+                Err(e) => {
+                    debug!("Clipboard translate skipped: failed to read clipboard text: {}", e);
+                    return;
+                }
+            };
+
+            if text.trim().is_empty() {
+                debug!("Clipboard translate skipped: clipboard has no text");
+                return;
+            }
+
+            let settings = get_settings(&app);
+            let system_prompt = build_translation_prompt(&settings.translation_target_language);
+
+            let Some(translated) = run_llm(&settings, &text, system_prompt).await else {
+                debug!("Clipboard translate produced no output");
+                return;
+            };
+
+            if translated.trim().is_empty() {
+                debug!("Clipboard translate produced empty output; nothing to paste");
+                return;
+            }
+
+            let app_for_paste = app.clone();
+            app.run_on_main_thread(move || match utils::paste(translated, app_for_paste.clone()) {
+                Ok(()) => debug!("Clipboard translation pasted successfully"),
+                Err(e) => {
+                    error!("Failed to paste clipboard translation: {}", e);
+                    let _ = app_for_paste.emit("paste-error", ());
+                }
+            })
+            .unwrap_or_else(|e| {
+                error!("Failed to run clipboard-translate paste on main thread: {:?}", e);
+            });
+        });
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {
+        // One-shot on press; nothing to do on release.
+    }
+}
+
 // Test Action
 struct TestAction;
 
@@ -971,6 +1031,10 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
     map.insert(
         "transcribe_with_translation".to_string(),
         Arc::new(TranscribeAction { mode: TranscribeMode::Translate }) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "translate_clipboard".to_string(),
+        Arc::new(ClipboardTranslateAction) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "cancel".to_string(),
@@ -1060,5 +1124,10 @@ mod tests {
         assert!(prompt.to_lowercase().contains("translate"));
         assert!(prompt.to_lowercase().contains("only the translation"));
         assert!(prompt.contains("${output}"));
+    }
+
+    #[test]
+    fn action_map_contains_translate_clipboard() {
+        assert!(super::ACTION_MAP.contains_key("translate_clipboard"));
     }
 }

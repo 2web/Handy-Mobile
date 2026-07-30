@@ -851,6 +851,27 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: default_translation_shortcut.to_string(),
         },
     );
+    #[cfg(target_os = "windows")]
+    let default_clipboard_translation_shortcut = "ctrl+alt+shift+space";
+    #[cfg(target_os = "macos")]
+    let default_clipboard_translation_shortcut = "option+ctrl+shift+space";
+    #[cfg(target_os = "linux")]
+    let default_clipboard_translation_shortcut = "ctrl+alt+shift+space";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_clipboard_translation_shortcut = "alt+ctrl+shift+space";
+
+    bindings.insert(
+        "translate_clipboard".to_string(),
+        ShortcutBinding {
+            id: "translate_clipboard".to_string(),
+            name: "Translate Clipboard".to_string(),
+            description: "Translates the text currently in the clipboard and pastes the result."
+                .to_string(),
+            default_binding: default_clipboard_translation_shortcut.to_string(),
+            current_binding: default_clipboard_translation_shortcut.to_string(),
+        },
+    );
+
     bindings.insert(
         "cancel".to_string(),
         ShortcutBinding {
@@ -1517,6 +1538,7 @@ mod tests {
         let s = get_default_settings();
         assert_eq!(s.translation_target_language, "en");
         assert!(s.bindings.contains_key("transcribe_with_translation"));
+        assert!(s.bindings.contains_key("translate_clipboard"));
     }
 
     #[test]
