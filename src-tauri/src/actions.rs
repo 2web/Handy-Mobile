@@ -962,29 +962,40 @@ impl ShortcutAction for ClipboardTranslateAction {
                 return;
             }
 
+            // Show the same processing feedback the voice path uses while the LLM
+            // runs, so the user can see the translation is in progress. Torn down
+            // on every exit path below (early return or after paste).
+            show_processing_overlay(&app);
+            change_tray_icon(&app, TrayIconState::Transcribing);
+
             let settings = get_settings(&app);
             let system_prompt = build_translation_prompt(&settings.translation_target_language);
 
-            let Some(translated) = run_llm(&settings, &text, system_prompt).await else {
-                debug!("Clipboard translate produced no output");
+            let translated = run_llm(&settings, &text, system_prompt).await;
+
+            let Some(translated) = translated.filter(|t| !t.trim().is_empty()) else {
+                debug!("Clipboard translate produced no usable output");
+                utils::hide_recording_overlay(&app);
+                change_tray_icon(&app, TrayIconState::Idle);
                 return;
             };
 
-            if translated.trim().is_empty() {
-                debug!("Clipboard translate produced empty output; nothing to paste");
-                return;
-            }
-
             let app_for_paste = app.clone();
-            app.run_on_main_thread(move || match utils::paste(translated, app_for_paste.clone()) {
-                Ok(()) => debug!("Clipboard translation pasted successfully"),
-                Err(e) => {
-                    error!("Failed to paste clipboard translation: {}", e);
-                    let _ = app_for_paste.emit("paste-error", ());
+            app.run_on_main_thread(move || {
+                match utils::paste(translated, app_for_paste.clone()) {
+                    Ok(()) => debug!("Clipboard translation pasted successfully"),
+                    Err(e) => {
+                        error!("Failed to paste clipboard translation: {}", e);
+                        let _ = app_for_paste.emit("paste-error", ());
+                    }
                 }
+                utils::hide_recording_overlay(&app_for_paste);
+                change_tray_icon(&app_for_paste, TrayIconState::Idle);
             })
             .unwrap_or_else(|e| {
                 error!("Failed to run clipboard-translate paste on main thread: {:?}", e);
+                utils::hide_recording_overlay(&app);
+                change_tray_icon(&app, TrayIconState::Idle);
             });
         });
     }
