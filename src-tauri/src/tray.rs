@@ -12,6 +12,26 @@ use tauri::tray::TrayIcon;
 use tauri::{AppHandle, Manager, Theme};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
+/// Curated common translation targets shown in the tray language submenu.
+/// Every code must be one `crate::actions::language_english_name` maps, so the
+/// menu label and the translation prompt agree. Exotic languages remain
+/// reachable through Settings → Translation.
+const TRANSLATION_LANGUAGE_SHORTLIST: &[&str] = &[
+    "en", "de", "ru", "es", "fr", "it", "pt", "ja", "ko", "uk", "pl", "tr", "nl", "zh-Hans",
+];
+
+/// Ordered entries for the tray language submenu: one per shortlist code, plus
+/// the current target appended if it is not already in the shortlist, so the
+/// active language is always present and checked. Returns `(code, is_checked)`.
+pub(crate) fn language_menu_entries(shortlist: &[&str], current: &str) -> Vec<(String, bool)> {
+    let mut entries: Vec<(String, bool)> =
+        shortlist.iter().map(|c| (c.to_string(), *c == current)).collect();
+    if !shortlist.iter().any(|c| *c == current) {
+        entries.push((current.to_string(), true));
+    }
+    entries
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TrayIconState {
     Idle,
@@ -347,7 +367,9 @@ pub fn copy_last_transcript(app: &AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{last_transcript_text, load_tray_icon};
+    use super::{
+        language_menu_entries, last_transcript_text, load_tray_icon, TRANSLATION_LANGUAGE_SHORTLIST,
+    };
     use crate::managers::history::HistoryEntry;
 
     fn build_entry(transcription: &str, post_processed: Option<&str>) -> HistoryEntry {
@@ -386,5 +408,23 @@ mod tests {
         let dir = tempfile::tempdir().expect("failed to create tempdir");
         let missing = dir.path().join("does_not_exist.png");
         assert!(load_tray_icon(Ok(missing)).is_err());
+    }
+
+    #[test]
+    fn current_in_shortlist_is_checked_once_no_duplicate() {
+        let entries = language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, "de");
+        assert_eq!(entries.len(), TRANSLATION_LANGUAGE_SHORTLIST.len());
+        let checked: Vec<&String> = entries.iter().filter(|(_, c)| *c).map(|(code, _)| code).collect();
+        assert_eq!(checked, vec![&"de".to_string()]);
+        let de_count = entries.iter().filter(|(code, _)| code == "de").count();
+        assert_eq!(de_count, 1);
+    }
+
+    #[test]
+    fn current_outside_shortlist_is_appended_and_checked() {
+        let entries = language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, "he");
+        assert_eq!(entries.len(), TRANSLATION_LANGUAGE_SHORTLIST.len() + 1);
+        assert_eq!(entries.last(), Some(&("he".to_string(), true)));
+        assert_eq!(entries.iter().filter(|(_, c)| *c).count(), 1);
     }
 }

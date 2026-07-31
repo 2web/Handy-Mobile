@@ -80,7 +80,7 @@ fn build_system_prompt(prompt_template: &str) -> String {
 /// frontend `LANGUAGES` list (src/lib/constants/languages.ts). Only the widely
 /// used targets are mapped; an unknown code falls back to the code itself, which
 /// LLMs still interpret acceptably.
-fn language_english_name(code: &str) -> String {
+pub(crate) fn language_english_name(code: &str) -> String {
     let name = match code {
         "en" => "English",
         "zh" | "zh-Hans" => "Simplified Chinese",
