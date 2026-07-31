@@ -263,6 +263,27 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
         submenu
     };
 
+    let current_lang = settings.translation_target_language.clone();
+    let language_submenu = {
+        let submenu = Submenu::with_id(
+            app,
+            "translation_language_submenu",
+            &strings.translation_language,
+            true,
+        )
+        .expect("failed to create translation language submenu");
+
+        for (code, is_active) in language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, &current_lang) {
+            let label = crate::actions::language_english_name(&code);
+            let item_id = format!("translate_lang:{}", code);
+            let item = CheckMenuItem::with_id(app, &item_id, &label, true, is_active, None::<&str>)
+                .expect("failed to create language item");
+            let _ = submenu.append(&item);
+        }
+
+        submenu
+    };
+
     let unload_model_i = MenuItem::with_id(
         app,
         "unload_model",
@@ -302,6 +323,7 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
                 &separator(),
                 &model_submenu,
                 &unload_model_i,
+                &language_submenu,
                 &separator(),
                 &settings_i,
                 &check_updates_i,

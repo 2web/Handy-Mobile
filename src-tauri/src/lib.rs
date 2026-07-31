@@ -304,6 +304,24 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                     tray::update_tray_menu(&app_clone, None);
                 });
             }
+            id if id.starts_with("translate_lang:") => {
+                let code = id.strip_prefix("translate_lang:").unwrap().to_string();
+                let mut settings = settings::get_settings(app);
+                if settings.translation_target_language == code {
+                    return;
+                }
+                settings.translation_target_language = code.clone();
+                settings::write_settings(app, settings);
+                let _ = app.emit(
+                    "settings-changed",
+                    serde_json::json!({
+                        "setting": "translation_target_language",
+                        "value": code
+                    }),
+                );
+                log::info!("Translation language switched to {} via tray.", code);
+                tray::update_tray_menu(app, None);
+            }
             _ => {}
         })
         .build(app_handle)
