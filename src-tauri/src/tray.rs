@@ -212,6 +212,31 @@ fn version_label() -> String {
     }
 }
 
+/// Fetch the active provider's model list and store it in the cache, then
+/// rebuild the tray. Network I/O runs off the menu-build thread; on error the
+/// cache is left unchanged.
+pub fn refresh_post_process_models(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let settings = settings::get_settings(&app);
+        let Some(provider) = settings.active_post_process_provider().cloned() else {
+            return;
+        };
+        let api_key = settings
+            .post_process_api_keys
+            .get(&provider.id)
+            .cloned()
+            .unwrap_or_default();
+        match crate::llm_client::fetch_models(&provider, api_key).await {
+            Ok(mut models) => {
+                models.sort();
+                app.state::<PostProcessModelCache>().set(models);
+                update_tray_menu(&app, None);
+            }
+            Err(e) => log::warn!("Tray model refresh failed for '{}': {}", provider.id, e),
+        }
+    });
+}
+
 pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
     let state = app.state::<CurrentTrayIconState>().get();
     let settings = settings::get_settings(app);
@@ -309,6 +334,32 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
         submenu
     };
 
+    let active_provider_id = settings.post_process_provider_id.clone();
+    let current_pp_model = settings
+        .post_process_models
+        .get(&active_provider_id)
+        .cloned()
+        .unwrap_or_default();
+    let cached_models = app.state::<PostProcessModelCache>().get();
+    let pp_model_submenu = {
+        let submenu = Submenu::with_id(app, "pp_model_submenu", &strings.post_process_model, true)
+            .expect("failed to create post-process model submenu");
+        for (model, is_active) in checked_entries(&cached_models, &current_pp_model) {
+            if model.is_empty() {
+                continue;
+            }
+            let item_id = format!("pp_model_select:{}", model);
+            let item = CheckMenuItem::with_id(app, &item_id, &model, true, is_active, None::<&str>)
+                .expect("failed to create pp model item");
+            let _ = submenu.append(&item);
+        }
+        let refresh = MenuItem::with_id(app, "pp_model_refresh", &strings.refresh_models, true, None::<&str>)
+            .expect("failed to create refresh models item");
+        let _ = submenu.append(&PredefinedMenuItem::separator(app).expect("failed to create separator"));
+        let _ = submenu.append(&refresh);
+        submenu
+    };
+
     let unload_model_i = MenuItem::with_id(
         app,
         "unload_model",
@@ -349,6 +400,7 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
                 &model_submenu,
                 &unload_model_i,
                 &language_submenu,
+                &pp_model_submenu,
                 &separator(),
                 &settings_i,
                 &check_updates_i,

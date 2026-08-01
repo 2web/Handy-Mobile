@@ -181,6 +181,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
     app_handle.manage(tray::CurrentTrayIconState::new());
+    app_handle.manage(tray::PostProcessModelCache::new());
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -322,6 +323,31 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 log::info!("Translation language switched to {} via tray.", code);
                 tray::update_tray_menu(app, None);
             }
+            id if id.starts_with("pp_model_select:") => {
+                let model = id.strip_prefix("pp_model_select:").unwrap().to_string();
+                let mut settings = settings::get_settings(app);
+                let provider_id = settings.post_process_provider_id.clone();
+                if settings.post_process_models.get(&provider_id) == Some(&model) {
+                    return;
+                }
+                settings
+                    .post_process_models
+                    .insert(provider_id.clone(), model.clone());
+                settings::write_settings(app, settings);
+                let _ = app.emit(
+                    "settings-changed",
+                    serde_json::json!({
+                        "setting": "post_process_models",
+                        "provider": provider_id,
+                        "value": model
+                    }),
+                );
+                log::info!("Post-process model switched to {} via tray.", model);
+                tray::update_tray_menu(app, None);
+            }
+            "pp_model_refresh" => {
+                tray::refresh_post_process_models(app.clone());
+            }
             _ => {}
         })
         .build(app_handle)
@@ -330,6 +356,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     // Initialize tray menu with idle state
     utils::update_tray_menu(app_handle, None);
+    tray::refresh_post_process_models(app_handle.clone());
 
     // Apply show_tray_icon setting
     let settings = settings::get_settings(app_handle);
