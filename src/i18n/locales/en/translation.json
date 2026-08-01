@@ -7,7 +7,9 @@
     "model": "Model",
     "quit": "Quit",
     "cancel": "Cancel",
-    "translationLanguage": "Translation Language"
+    "translationLanguage": "Translation Language",
+    "postProcessModel": "Post-Processing Model",
+    "refreshModels": "Refresh models"
   },
   "sidebar": {
     "general": "General",

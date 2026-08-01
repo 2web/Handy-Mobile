@@ -7,7 +7,9 @@
     "model": "Модель",
     "quit": "Выход",
     "cancel": "Отмена",
-    "translationLanguage": "Язык перевода"
+    "translationLanguage": "Язык перевода",
+    "postProcessModel": "Модель постобработки",
+    "refreshModels": "Обновить список"
   },
   "sidebar": {
     "general": "Общие",

@@ -20,16 +20,41 @@ const TRANSLATION_LANGUAGE_SHORTLIST: &[&str] = &[
     "en", "de", "ru", "es", "fr", "it", "pt", "ja", "ko", "uk", "pl", "tr", "nl", "zh-Hans",
 ];
 
-/// Ordered entries for the tray language submenu: one per shortlist code, plus
-/// the current target appended if it is not already in the shortlist, so the
-/// active language is always present and checked. Returns `(code, is_checked)`.
-pub(crate) fn language_menu_entries(shortlist: &[&str], current: &str) -> Vec<(String, bool)> {
-    let mut entries: Vec<(String, bool)> =
-        shortlist.iter().map(|c| (c.to_string(), *c == current)).collect();
-    if !shortlist.iter().any(|c| *c == current) {
+/// Ordered `(label, is_checked)` entries: one per item, plus `current` appended
+/// (checked) if it is not already present, so the active value is always shown.
+/// Shared by the language and post-process-model tray submenus.
+pub(crate) fn checked_entries<S: AsRef<str>>(items: &[S], current: &str) -> Vec<(String, bool)> {
+    let mut entries: Vec<(String, bool)> = items
+        .iter()
+        .map(|s| (s.as_ref().to_string(), s.as_ref() == current))
+        .collect();
+    if !items.iter().any(|s| s.as_ref() == current) {
         entries.push((current.to_string(), true));
     }
     entries
+}
+
+/// In-memory cache of the active provider's available post-processing model
+/// names, populated asynchronously so `update_tray_menu` never blocks on the
+/// network. Managed state; mirrors the `CurrentTrayIconState` pattern.
+pub struct PostProcessModelCache(std::sync::Mutex<Vec<String>>);
+
+impl PostProcessModelCache {
+    pub fn new() -> Self {
+        Self(std::sync::Mutex::new(Vec::new()))
+    }
+    pub fn get(&self) -> Vec<String> {
+        self.0.lock().unwrap().clone()
+    }
+    pub fn set(&self, models: Vec<String>) {
+        *self.0.lock().unwrap() = models;
+    }
+}
+
+impl Default for PostProcessModelCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -273,7 +298,7 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
         )
         .expect("failed to create translation language submenu");
 
-        for (code, is_active) in language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, &current_lang) {
+        for (code, is_active) in checked_entries(TRANSLATION_LANGUAGE_SHORTLIST, &current_lang) {
             let label = crate::actions::language_english_name(&code);
             let item_id = format!("translate_lang:{}", code);
             let item = CheckMenuItem::with_id(app, &item_id, &label, true, is_active, None::<&str>)
@@ -390,7 +415,7 @@ pub fn copy_last_transcript(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::{
-        language_menu_entries, last_transcript_text, load_tray_icon, TRANSLATION_LANGUAGE_SHORTLIST,
+        checked_entries, last_transcript_text, load_tray_icon, TRANSLATION_LANGUAGE_SHORTLIST,
     };
     use crate::managers::history::HistoryEntry;
 
@@ -434,7 +459,7 @@ mod tests {
 
     #[test]
     fn current_in_shortlist_is_checked_once_no_duplicate() {
-        let entries = language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, "de");
+        let entries = checked_entries(TRANSLATION_LANGUAGE_SHORTLIST, "de");
         assert_eq!(entries.len(), TRANSLATION_LANGUAGE_SHORTLIST.len());
         let checked: Vec<&String> = entries.iter().filter(|(_, c)| *c).map(|(code, _)| code).collect();
         assert_eq!(checked, vec![&"de".to_string()]);
@@ -444,9 +469,18 @@ mod tests {
 
     #[test]
     fn current_outside_shortlist_is_appended_and_checked() {
-        let entries = language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, "he");
+        let entries = checked_entries(TRANSLATION_LANGUAGE_SHORTLIST, "he");
         assert_eq!(entries.len(), TRANSLATION_LANGUAGE_SHORTLIST.len() + 1);
         assert_eq!(entries.last(), Some(&("he".to_string(), true)));
+        assert_eq!(entries.iter().filter(|(_, c)| *c).count(), 1);
+    }
+
+    #[test]
+    fn checked_entries_appends_current_model_when_absent() {
+        let models = vec!["qwen2.5:3b".to_string(), "gemma4:12b".to_string()];
+        let entries = checked_entries(&models, "llama3.2:3b");
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.last(), Some(&("llama3.2:3b".to_string(), true)));
         assert_eq!(entries.iter().filter(|(_, c)| *c).count(), 1);
     }
 }
