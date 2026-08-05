@@ -7,6 +7,7 @@
 //! boundary rather than by discipline.
 
 pub mod clipboard_watch;
+pub mod gear;
 pub mod items;
 pub mod log;
 pub mod store;
