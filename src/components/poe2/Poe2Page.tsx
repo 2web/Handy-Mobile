@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EquipmentTab } from "./EquipmentTab";
 import { ItemsPage } from "./ItemsPage";
 import { ProgressTab } from "./ProgressTab";
 
-type Tab = "progress" | "items";
+type Tab = "progress" | "items" | "equipment";
 
 export const Poe2Page: React.FC = () => {
   const { t } = useTranslation();
@@ -12,7 +13,7 @@ export const Poe2Page: React.FC = () => {
   return (
     <div className="max-w-3xl w-full mx-auto">
       <div className="flex gap-2 border-b border-mid-gray/30 px-4 pt-3">
-        {(["progress", "items"] as Tab[]).map((id) => (
+        {(["progress", "items", "equipment"] as Tab[]).map((id) => (
           <button
             key={id}
             type="button"
@@ -27,7 +28,9 @@ export const Poe2Page: React.FC = () => {
           </button>
         ))}
       </div>
-      {tab === "progress" ? <ProgressTab /> : <ItemsPage />}
+      {tab === "progress" && <ProgressTab />}
+      {tab === "items" && <ItemsPage />}
+      {tab === "equipment" && <EquipmentTab />}
     </div>
   );
 };

@@ -925,6 +925,15 @@ async poe2State() : Promise<Result<ProgressSnapshot, string>> {
  * 
  * The event log itself is never touched. This exists so a fix to the zone
  * pairing rules can be applied to history that is already ingested.
+ * 
+ * The replay is assembled into one `IngestBatch` and written through
+ * `ingest_batch`, the same batched-transaction path `poll_once` uses,
+ * rather than one transaction per zone update and character upsert: with
+ * thousands of events that was thousands of fsyncs, long enough to hold the
+ * database busy past the tracker thread's 5-second `busy_timeout`, and a
+ * failure partway through left `zones` and `characters` half-rebuilt with
+ * no rollback. `events` is left empty — the events already exist and must
+ * not be re-inserted.
  */
 async poe2RebuildDerived() : Promise<Result<number, string>> {
     try {
@@ -937,6 +946,30 @@ async poe2RebuildDerived() : Promise<Result<number, string>> {
 async changePoe2LogPathSetting(path: string | null) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_poe2_log_path_setting", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async poe2Equipment() : Promise<Result<EquipmentView, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("poe2_equipment") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async poe2SetItemExcluded(itemId: number, excluded: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("poe2_set_item_excluded", { itemId, excluded }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePoe2ResistancePenaltySetting(penalty: number | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_poe2_resistance_penalty_setting", { penalty }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -995,13 +1028,25 @@ whats_new_last_seen_version?: string; selected_model?: string; onboarding_comple
  * not gated on this — that follows model capability. Migrated from the old
  * `overlay_position` (position `none` → style `None`).
  */
-overlay_style?: OverlayStyle; poe2_enabled?: boolean; poe2_clipboard_watch?: boolean; poe2_log_path?: string | null }
+overlay_style?: OverlayStyle; poe2_enabled?: boolean; poe2_clipboard_watch?: boolean; poe2_log_path?: string | null; 
+/**
+ * The campaign's resistance penalty, as the player reads it off their own
+ * character panel. Unset means the calculator shows the gear contribution
+ * and withholds any comparison to the cap — a wrong number in the
+ * reassuring direction is worse than none.
+ */
+poe2_resistance_penalty?: number | null; 
+/**
+ * Items the player has excluded from the calculation.
+ */
+poe2_excluded_items?: number[] }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { transcribe: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
+export type Element = "fire" | "cold" | "lightning" | "chaos"
 export type EngineType = 
 /**
  * Any GGML/GGUF model loaded through transcribe-cpp (Whisper, Parakeet,
@@ -1009,6 +1054,13 @@ export type EngineType =
  * the file, so this one variant covers the whole transcribe-cpp family.
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
+export type EquipmentItem = { id: number; name: string | null; base_type: string | null; item_class: string | null; slot: Slot | null; excluded: boolean; 
+/**
+ * "worn" | "superseded" | "unrecognised" | "excluded"
+ */
+status: string }
+export type EquipmentSummary = { lines: ResistanceLine[]; penalty: number | null; worn: ([number, Slot])[]; superseded: number[]; unrecognised: number[]; empty_slots: Slot[] }
+export type EquipmentView = { summary: EquipmentSummary; items: EquipmentItem[] }
 export type GpuDeviceOption = { id: number; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 export type HistoryUpdatePayload = { action: "added"; entry: HistoryEntry } | { action: "updated"; entry: HistoryEntry } | { action: "deleted"; id: number } | { action: "toggled"; id: number }
@@ -1070,13 +1122,13 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
  * `NaiveDateTime`, which specta cannot describe without its chrono feature. The
  * two timestamps the interface actually shows are rendered as ISO strings here.
  */
-export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null;
+export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null; 
 /**
  * The current zone's act, which is more trustworthy than the last act seen:
  * a global "last act" never resets and would show an act finished hours ago
  * once the player reaches the endgame or a hideout.
  */
-act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number;
+act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number; 
 /**
  * The path actually resolved and polled — the setting, or the default
  * if unset. Distinct from the `poe2_log_path` setting, which is `null`
@@ -1086,8 +1138,28 @@ act: string | null; log_present: boolean; debug_lines: boolean; importing: boole
 log_path: string }
 export type RebuildResult = { reparsed: number; failed: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+export type ResistanceLine = { element: Element; 
+/**
+ * What the worn gear adds up to, before the campaign penalty.
+ */
+from_gear: number; 
+/**
+ * The figure the character panel would show. `None` for the three elemental
+ * resistances while the penalty is unknown — neither "met" nor "short" can
+ * be claimed without it.
+ */
+total: number | null; cap: number; short_by: number | null; 
+/**
+ * Worn slots contributing nothing to this element.
+ */
+missing_from: Slot[]; 
+/**
+ * Slots with nothing captured for them at all.
+ */
+empty_slots: Slot[] }
 export type SecretMap = Partial<{ [key in string]: string }>
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
+export type Slot = "weapon" | "off_hand" | "body_armour" | "helmet" | "gloves" | "boots" | "belt" | "amulet" | "ring"
 export type SoundTheme = "marimba" | "pop" | "custom"
 export type StoredItem = { id: number; captured_ts: string; raw_text: string; source: string; item_class: string | null; rarity: string | null; name: string | null; base_type: string | null; item_level: number | null; requires_level: number | null; quality: number | null; sockets: string | null; properties: Partial<{ [key in string]: string }>; requirements: Partial<{ [key in string]: number }>; advanced: boolean; mods: StoredMod[] }
 export type StoredMod = { position: number; effect_index: number; kind: string; mod_name: string | null; tier: number | null; tags: string[]; text: string; value: number | null; value_min: number | null; value_max: number | null }

@@ -40,7 +40,8 @@
     },
     "tabs": {
       "progress": "Progress",
-      "items": "Items"
+      "items": "Items",
+      "equipment": "Equipment"
     },
     "progress": {
       "noCharacter": "No character identified yet",
@@ -68,6 +69,48 @@
       "rebuilt": "Replayed {{count}} events.",
       "rebuildError": "Could not rebuild from the event log.",
       "events": "{{count}} events stored"
+    },
+    "equipment": {
+      "title": "Resistances",
+      "fromGear": "From gear",
+      "total": "Total",
+      "cap": "Cap",
+      "short": "short {{amount}}",
+      "atCap": "at the cap",
+      "noItems": "No items captured yet — copy one in the game and paste it on the Items tab.",
+      "penaltyTitle": "Campaign resistance penalty",
+      "penaltyUnset": "Not set. Totals below are what your gear gives, before the campaign penalty — your character panel will show less.",
+      "penaltyHow": "Open the character panel in the game, compare one elemental resistance with the figure above, and enter the difference.",
+      "penaltyLabel": "Penalty",
+      "penaltySave": "Save",
+      "penaltyClear": "Clear",
+      "gapsTitle": "Where the missing points could come from",
+      "emptySlots": "Nothing captured for: {{slots}}",
+      "givesNothing": "Worn but giving nothing to this: {{slots}}",
+      "itemsTitle": "Items counted",
+      "statusWorn": "worn",
+      "statusSuperseded": "replaced by something newer",
+      "statusUnrecognised": "class not recognised",
+      "statusExcluded": "excluded by you",
+      "exclude": "Exclude",
+      "include": "Include",
+      "slot": {
+        "weapon": "Weapon",
+        "off_hand": "Off-hand",
+        "body_armour": "Body armour",
+        "helmet": "Helmet",
+        "gloves": "Gloves",
+        "boots": "Boots",
+        "belt": "Belt",
+        "amulet": "Amulet",
+        "ring": "Ring"
+      },
+      "element": {
+        "fire": "Fire",
+        "cold": "Cold",
+        "lightning": "Lightning",
+        "chaos": "Chaos"
+      }
     }
   },
   "onboarding": {

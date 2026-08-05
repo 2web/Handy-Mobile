@@ -171,6 +171,8 @@ const settingUpdaters: {
     commands.changePoe2ClipboardWatchSetting(value as boolean),
   poe2_log_path: (value) =>
     commands.changePoe2LogPathSetting(value as string | null),
+  poe2_resistance_penalty: (value) =>
+    commands.changePoe2ResistancePenaltySetting(value as number | null),
 };
 
 export const useSettingsStore = create<SettingsStore>()(
