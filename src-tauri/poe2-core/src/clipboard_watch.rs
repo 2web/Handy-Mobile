@@ -165,6 +165,16 @@ mod tests {
     /// screenshot or file, not a real failure — and must never trip
     /// `available()` off. The watcher keeps polling and still picks up an
     /// item that shows up afterwards.
+    ///
+    /// What this test does NOT cover: `check_once`'s handling of `Ok(None)`
+    /// was already correct before the screenshot bug was fixed, and is
+    /// already pinned by `empty_clipboard_is_ignored` above. The actual bug
+    /// lived in `watcher.rs`'s reader closure — the code that turns a real
+    /// `tauri_plugin_clipboard_manager::read_text()` failure into `Ok(None)`
+    /// instead of `Err` — and that closure needs a real `AppHandle`, so no
+    /// unit test in this crate can reach it. That mapping is guaranteed by
+    /// inspection of the closure and its doc comment, not by a test, the same
+    /// way some invariants in `store.rs` are documented rather than asserted.
     #[test]
     fn no_text_is_not_an_error_and_watching_keeps_going() {
         let seen = Rc::new(RefCell::new(Vec::new()));

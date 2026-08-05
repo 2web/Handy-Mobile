@@ -17,13 +17,18 @@ use crate::settings;
 /// Guards against two polling threads running at once. `spawn` is called both
 /// at startup and whenever the setting is switched on mid-session, so a second
 /// call while a thread is already running must be a no-op rather than starting
-/// a duplicate.
+/// a duplicate. Once set, this stays `true` for the life of the process on the
+/// normal path: the thread it guards never exits just because the setting
+/// went off (see the loop below), so there is no window for a racing `spawn`
+/// call to find the flag cleared and start a second thread.
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Starts the polling thread if the setting is on and no thread is already
 /// running. Called once at startup, and again from the settings command
 /// whenever the toggle is switched on, so enabling clipboard watching takes
-/// effect immediately instead of requiring a restart.
+/// effect immediately instead of requiring a restart. The thread it starts
+/// lives for the rest of the process (barring a genuine clipboard failure):
+/// later disabling the setting does not stop it, only pauses its reads.
 pub fn spawn(app: AppHandle) {
     if !settings::get_settings(&app).poe2_clipboard_watch {
         return;
@@ -69,13 +74,26 @@ pub fn spawn(app: AppHandle) {
         );
 
         while watcher.available() {
-            if !settings::get_settings(&app).poe2_clipboard_watch {
-                break;
+            // Skip the read rather than exiting when the setting is off: a
+            // `spawn` call from `change_poe2_clipboard_watch_setting` racing
+            // this thread's exit could see `WATCHER_RUNNING` still `true` and
+            // return without starting a replacement, leaving the setting on
+            // and nothing watching until the user happens to toggle it again.
+            // One thread lives for the process once started; a sleeping
+            // thread costs nothing, and while the setting is off the
+            // clipboard is still never read, so the privacy commitment holds.
+            if settings::get_settings(&app).poe2_clipboard_watch {
+                watcher.check_once();
             }
-            watcher.check_once();
             std::thread::sleep(POLL_INTERVAL);
         }
 
+        // Only reached via `available() == false`, i.e. a genuine clipboard
+        // read failure reported by the injected reader. In production every
+        // plugin read failure is mapped to `Ok(None)` (see the reader closure
+        // above), so this path is unreachable there and exercised only by
+        // tests with an injected reader; clearing the flag here — and nowhere
+        // else — is deliberate, not an oversight.
         WATCHER_RUNNING.store(false, Ordering::SeqCst);
     });
 }
