@@ -1,10 +1,14 @@
 //! Acceptance tests for the definition of done in
 //! docs/superpowers/specs/2026-08-05-poe2-log-tracker-design.md.
 //!
-//! Two criteria cannot be expressed here and are enforced elsewhere:
+//! Three criteria cannot be expressed here and are enforced elsewhere:
 //!   - Criterion 2's "updates within about a second" and criterion 4's
 //!     "does not block the window" live in the polling thread in
 //!     src-tauri/src/poe2/tracker.rs.
+//!   - Criterion 5's detection of a log with no DEBUG lines is done by
+//!     `has_debug_lines` in src-tauri/src/poe2/tracker.rs and surfaced by the
+//!     `noDebug` banner in src/components/poe2/ProgressTab.tsx. Neither is
+//!     reachable from this crate.
 //!   - Criterion 8, i18n labels, lives in src/i18n/locales/{en,ru}/translation.json
 //!     and src/components/poe2/ProgressTab.tsx.
 
@@ -21,10 +25,13 @@ mod tests {
 
     const SAMPLE: &str = include_str!("fixtures/sample_client.txt");
 
-    /// Criterion 5: a log with no DEBUG lines must be detectable, because
-    /// without them zone changes are invisible and the interface has to say so.
+    /// Guards the fixture's shape, not the detector: `has_debug_lines` lives in
+    /// the `handy` crate and is untestable from here (see the module doc
+    /// comment). If this fixture ever stopped containing a DEBUG line, several
+    /// other tests here would be quietly weakened, so this only pins that the
+    /// line is still present. It asserts nothing about criterion 5 itself.
     #[test]
-    fn debug_lines_are_distinguishable_in_the_sample() {
+    fn the_fixture_still_contains_a_debug_line() {
         let debug_lines = SAMPLE
             .lines()
             .filter(|l| l.contains("[DEBUG Client"))
