@@ -9,7 +9,7 @@
 //! touching anything else.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,10 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::items::ParsedItem;
+use crate::log::events::{Event, EventKind};
+use crate::log::zones::ZoneUpdate;
 
-const MIGRATIONS: [&str; 2] = [
+const MIGRATIONS: [&str; 5] = [
     "CREATE TABLE IF NOT EXISTS items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         raw_hash TEXT NOT NULL UNIQUE,
@@ -52,6 +54,30 @@ const MIGRATIONS: [&str; 2] = [
         value_min REAL,
         value_max REAL,
         PRIMARY KEY (item_id, position, effect_index)
+    );",
+    "CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        file_offset INTEGER NOT NULL,
+        generation INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(generation, file_offset)
+    );
+    CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );",
+    "CREATE TABLE IF NOT EXISTS zones (
+        code TEXT PRIMARY KEY,
+        name TEXT,
+        act TEXT,
+        area_level INTEGER
+    );",
+    "CREATE TABLE IF NOT EXISTS characters (
+        name TEXT PRIMARY KEY,
+        ascendancy TEXT,
+        last_seen_ts TEXT
     );",
 ];
 
@@ -87,6 +113,30 @@ pub struct StoredItem {
     pub requirements: BTreeMap<String, i64>,
     pub advanced: bool,
     pub mods: Vec<StoredMod>,
+}
+
+/// Everything one poll of the log produced, written together or not at all.
+pub struct IngestBatch {
+    pub events: Vec<(Event, i64)>,
+    pub generation: i64,
+    pub zones: Vec<ZoneUpdate>,
+    pub characters: Vec<(String, Option<String>, Option<NaiveDateTime>)>,
+    pub meta: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ZoneRow {
+    pub code: String,
+    pub name: Option<String>,
+    pub act: Option<String>,
+    pub area_level: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CharacterRow {
+    pub name: String,
+    pub ascendancy: Option<String>,
+    pub last_seen_ts: Option<String>,
 }
 
 pub struct Poe2Store {
@@ -368,6 +418,224 @@ impl Poe2Store {
             .collect::<rusqlite::Result<Vec<StoredMod>>>()?;
         Ok(rows)
     }
+
+    /// Appends an event. False means this (generation, offset) was already stored.
+    ///
+    /// The key is the pair, not the offset alone: after the game truncates
+    /// Client.txt, byte offsets start over and repeat, and keyed on the offset
+    /// alone every event of the new generation would be discarded as a duplicate.
+    pub fn add_event(&mut self, event: &Event, file_offset: i64, generation: i64) -> Result<bool> {
+        let changed = self.conn.execute(
+            "INSERT OR IGNORE INTO events (ts, kind, payload, file_offset, generation)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                event.ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                event.kind.as_str(),
+                serde_json::to_string(&event.payload)?,
+                file_offset,
+                generation,
+            ],
+        )?;
+        Ok(changed > 0)
+    }
+
+    pub fn events(&self) -> Result<Vec<Event>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT ts, kind, payload FROM events ORDER BY id")?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<Vec<(String, String, String)>>>()?;
+
+        let mut events = Vec::with_capacity(rows.len());
+        for (ts, kind, payload) in rows {
+            // A row whose kind or timestamp no longer parses is skipped rather
+            // than failing the whole read: the log itself is the source of truth
+            // and can be re-ingested, but a single bad row must not blind the
+            // tracker to every other event.
+            let (Ok(ts), Some(kind)) = (
+                NaiveDateTime::parse_from_str(&ts, "%Y-%m-%dT%H:%M:%S"),
+                EventKind::from_str_opt(&kind),
+            ) else {
+                continue;
+            };
+            events.push(Event {
+                ts,
+                kind,
+                payload: serde_json::from_str(&payload).unwrap_or(serde_json::Value::Null),
+            });
+        }
+        Ok(events)
+    }
+
+    /// COALESCE keeps an already-known name or act from being blanked by a later
+    /// observation that carries only the other one.
+    pub fn apply_zone_update(&mut self, update: &ZoneUpdate) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO zones (code, name, act, area_level) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(code) DO UPDATE SET
+                name = COALESCE(excluded.name, zones.name),
+                act = COALESCE(excluded.act, zones.act),
+                area_level = excluded.area_level",
+            params![update.code, update.name, update.act, update.area_level],
+        )?;
+        Ok(())
+    }
+
+    pub fn zones(&self) -> Result<Vec<ZoneRow>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT code, name, act, area_level FROM zones ORDER BY code")?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(ZoneRow {
+                    code: row.get(0)?,
+                    name: row.get(1)?,
+                    act: row.get(2)?,
+                    area_level: row.get(3)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<ZoneRow>>>()?;
+        Ok(rows)
+    }
+
+    pub fn upsert_character(
+        &mut self,
+        name: &str,
+        ascendancy: Option<&str>,
+        ts: Option<NaiveDateTime>,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO characters (name, ascendancy, last_seen_ts) VALUES (?1, ?2, ?3)
+             ON CONFLICT(name) DO UPDATE SET
+                ascendancy = COALESCE(excluded.ascendancy, characters.ascendancy),
+                last_seen_ts = COALESCE(excluded.last_seen_ts, characters.last_seen_ts)",
+            params![
+                name,
+                ascendancy,
+                ts.map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn characters(&self) -> Result<Vec<CharacterRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT name, ascendancy, last_seen_ts FROM characters ORDER BY last_seen_ts DESC",
+        )?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(CharacterRow {
+                    name: row.get(0)?,
+                    ascendancy: row.get(1)?,
+                    last_seen_ts: row.get(2)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<CharacterRow>>>()?;
+        Ok(rows)
+    }
+
+    pub fn get_meta(&self, key: &str) -> Result<Option<String>> {
+        let value = self
+            .conn
+            .query_row(
+                "SELECT value FROM meta WHERE key = ?1",
+                params![key],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(value)
+    }
+
+    pub fn set_meta(&mut self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    /// Everything one poll produced, written in a single transaction.
+    ///
+    /// This is not an optimisation. Committing per event turned the cold import
+    /// of a 27 MB log into ninety seconds, almost all of it waiting on the disk.
+    /// It also makes a poll atomic: the read offset in `meta` advances only if
+    /// the events it covers were stored, so a crash mid-write cannot skip a
+    /// stretch of the log forever.
+    pub fn ingest_batch(&mut self, batch: &IngestBatch) -> Result<u32> {
+        let tx = self.conn.transaction()?;
+        let mut added = 0u32;
+
+        {
+            let mut stmt = tx.prepare(
+                "INSERT OR IGNORE INTO events (ts, kind, payload, file_offset, generation)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+            )?;
+            for (event, file_offset) in &batch.events {
+                let changed = stmt.execute(params![
+                    event.ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                    event.kind.as_str(),
+                    serde_json::to_string(&event.payload)?,
+                    file_offset,
+                    batch.generation,
+                ])?;
+                added += changed as u32;
+            }
+        }
+
+        for update in &batch.zones {
+            tx.execute(
+                "INSERT INTO zones (code, name, act, area_level) VALUES (?1, ?2, ?3, ?4)
+                 ON CONFLICT(code) DO UPDATE SET
+                    name = COALESCE(excluded.name, zones.name),
+                    act = COALESCE(excluded.act, zones.act),
+                    area_level = excluded.area_level",
+                params![update.code, update.name, update.act, update.area_level],
+            )?;
+        }
+
+        for (name, ascendancy, ts) in &batch.characters {
+            tx.execute(
+                "INSERT INTO characters (name, ascendancy, last_seen_ts) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(name) DO UPDATE SET
+                    ascendancy = COALESCE(excluded.ascendancy, characters.ascendancy),
+                    last_seen_ts = COALESCE(excluded.last_seen_ts, characters.last_seen_ts)",
+                params![
+                    name,
+                    ascendancy,
+                    ts.map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
+                ],
+            )?;
+        }
+
+        for (key, value) in &batch.meta {
+            tx.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                params![key, value],
+            )?;
+        }
+
+        tx.commit()?;
+        Ok(added)
+    }
+
+    /// Empties the derived tables. The event log is never touched — it is the
+    /// source of truth these tables are rebuilt from.
+    pub fn clear_derived(&mut self) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute("DELETE FROM zones", [])?;
+        tx.execute("DELETE FROM characters", [])?;
+        tx.commit()?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -646,5 +914,177 @@ mod tests {
         let after = s.item(id).unwrap().unwrap().mods.len();
         assert_eq!(before, after);
         assert!(after > 0);
+    }
+
+    use crate::log::events::{Event, EventKind};
+    use crate::log::zones::ZoneUpdate;
+    use chrono::NaiveDate;
+    use serde_json::json;
+
+    fn event_at(minute: u32, kind: EventKind) -> Event {
+        Event {
+            ts: NaiveDate::from_ymd_opt(2026, 8, 2)
+                .unwrap()
+                .and_hms_opt(12, minute, 0)
+                .unwrap(),
+            kind,
+            payload: json!({"n": minute}),
+        }
+    }
+
+    #[test]
+    fn events_round_trip_in_insertion_order() {
+        let mut s = store();
+        for i in 0..3u32 {
+            assert!(s
+                .add_event(&event_at(i, EventKind::Focus), i as i64 * 10, 0)
+                .unwrap());
+        }
+        let read = s.events().unwrap();
+        assert_eq!(read.len(), 3);
+        assert_eq!(read[0].payload["n"], 0);
+        assert_eq!(read[2].payload["n"], 2);
+        assert_eq!(read[0].kind, EventKind::Focus);
+    }
+
+    #[test]
+    fn the_same_offset_in_one_generation_is_a_duplicate() {
+        let mut s = store();
+        assert!(s.add_event(&event_at(1, EventKind::Focus), 100, 0).unwrap());
+        assert!(!s.add_event(&event_at(1, EventKind::Focus), 100, 0).unwrap());
+        assert_eq!(s.events().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn the_same_offset_in_a_new_generation_is_kept() {
+        // After the game truncates Client.txt, byte offsets start over and
+        // repeat. Keyed on the offset alone, every event of the new generation
+        // would be discarded as a duplicate.
+        let mut s = store();
+        assert!(s.add_event(&event_at(1, EventKind::Focus), 100, 0).unwrap());
+        assert!(s.add_event(&event_at(2, EventKind::Focus), 100, 1).unwrap());
+        assert_eq!(s.events().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn zone_name_and_act_accumulate_without_erasing_each_other() {
+        let mut s = store();
+        s.apply_zone_update(&ZoneUpdate {
+            code: "G1_4".into(),
+            area_level: 4,
+            name: None,
+            act: None,
+        })
+        .unwrap();
+        s.apply_zone_update(&ZoneUpdate {
+            code: "G1_4".into(),
+            area_level: 4,
+            name: Some("Clearfell".into()),
+            act: None,
+        })
+        .unwrap();
+        s.apply_zone_update(&ZoneUpdate {
+            code: "G1_4".into(),
+            area_level: 4,
+            name: None,
+            act: Some("Act 1".into()),
+        })
+        .unwrap();
+
+        let zones = s.zones().unwrap();
+        assert_eq!(zones.len(), 1);
+        assert_eq!(zones[0].name.as_deref(), Some("Clearfell"));
+        assert_eq!(zones[0].act.as_deref(), Some("Act 1"));
+        assert_eq!(zones[0].area_level, Some(4));
+    }
+
+    #[test]
+    fn a_known_character_keeps_its_ascendancy_when_seen_without_one() {
+        let mut s = store();
+        let ts = NaiveDate::from_ymd_opt(2026, 8, 2)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap();
+        s.upsert_character("Hero", Some("Sorceress"), Some(ts))
+            .unwrap();
+        s.upsert_character("Hero", None, Some(ts)).unwrap();
+        let chars = s.characters().unwrap();
+        assert_eq!(chars.len(), 1);
+        assert_eq!(chars[0].ascendancy.as_deref(), Some("Sorceress"));
+    }
+
+    #[test]
+    fn meta_round_trips() {
+        let mut s = store();
+        assert_eq!(s.get_meta("offset").unwrap(), None);
+        s.set_meta("offset", "1234").unwrap();
+        assert_eq!(s.get_meta("offset").unwrap().as_deref(), Some("1234"));
+        s.set_meta("offset", "5678").unwrap();
+        assert_eq!(s.get_meta("offset").unwrap().as_deref(), Some("5678"));
+    }
+
+    #[test]
+    fn a_batch_lands_in_one_transaction() {
+        let mut s = store();
+        let ts = NaiveDate::from_ymd_opt(2026, 8, 2)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap();
+        let batch = IngestBatch {
+            events: vec![
+                (event_at(1, EventKind::Focus), 10),
+                (event_at(2, EventKind::Focus), 20),
+            ],
+            generation: 0,
+            zones: vec![ZoneUpdate {
+                code: "G1_4".into(),
+                area_level: 4,
+                name: Some("Clearfell".into()),
+                act: None,
+            }],
+            characters: vec![("Hero".into(), Some("Sorceress".into()), Some(ts))],
+            meta: vec![("log_offset".into(), "20".into())],
+        };
+        assert_eq!(s.ingest_batch(&batch).unwrap(), 2);
+        assert_eq!(s.events().unwrap().len(), 2);
+        assert_eq!(s.zones().unwrap().len(), 1);
+        assert_eq!(s.characters().unwrap().len(), 1);
+        assert_eq!(s.get_meta("log_offset").unwrap().as_deref(), Some("20"));
+    }
+
+    #[test]
+    fn a_batch_counts_only_the_events_that_were_new() {
+        let mut s = store();
+        let first = IngestBatch {
+            events: vec![(event_at(1, EventKind::Focus), 10)],
+            generation: 0,
+            zones: vec![],
+            characters: vec![],
+            meta: vec![],
+        };
+        assert_eq!(s.ingest_batch(&first).unwrap(), 1);
+        // Same generation, same offset: already stored.
+        assert_eq!(s.ingest_batch(&first).unwrap(), 0);
+        assert_eq!(s.events().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn clear_derived_leaves_the_event_log_alone() {
+        let mut s = store();
+        s.add_event(&event_at(1, EventKind::Focus), 10, 0).unwrap();
+        s.apply_zone_update(&ZoneUpdate {
+            code: "G1_4".into(),
+            area_level: 4,
+            name: Some("Clearfell".into()),
+            act: None,
+        })
+        .unwrap();
+        s.upsert_character("Hero", Some("Sorceress"), None).unwrap();
+
+        s.clear_derived().unwrap();
+
+        assert!(s.zones().unwrap().is_empty());
+        assert!(s.characters().unwrap().is_empty());
+        assert_eq!(s.events().unwrap().len(), 1, "the event log is immutable");
     }
 }
