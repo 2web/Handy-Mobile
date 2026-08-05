@@ -69,11 +69,16 @@ static TWO_ELEMENT_RE: Lazy<Regex> = Lazy::new(|| {
     )
     .unwrap()
 });
-// "+1% to maximum Fire Resistance" raises the cap rather than the pool, and
-// "Damage Penetrates 15% Fire Resistance" reduces the enemy's. Neither protects
-// the player by the amount it names, so neither may be summed here.
+// "+1% to maximum Fire Resistance" raises the cap rather than the pool,
+// "Damage Penetrates 15% Fire Resistance" reduces the enemy's, and
+// "Nearby Enemies have -10% to Chaos Resistance" / "Enemies you Curse have
+// -5% to Fire Resistance" change the enemy's own resistance. None of these
+// protect the player by the amount they name, so none may be summed here.
+// "Enemy"/"Enemies" is matched as a whole word, case-sensitively — the game
+// capitalises it in affix text, and a case-insensitive match risks catching
+// an unrelated future modifier that uses the word in prose.
 static NOT_A_BONUS_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"maximum \w+ Resistance|Penetrat").unwrap());
+    Lazy::new(|| Regex::new(r"maximum \w+ Resistance|Penetrat|\bEnemy\b|\bEnemies\b").unwrap());
 
 /// What a modifier contributes, per element.
 ///
@@ -238,6 +243,30 @@ mod tests {
         // "+1% to maximum Fire Resistance" raises the cap, it does not add to the
         // pool. Out of scope for this feature, and must not be counted as a bonus.
         assert!(resistance_from_mod(&m("+1% to maximum Fire Resistance", Some(1.0))).is_empty());
+    }
+
+    #[test]
+    fn enemy_resistance_is_not_the_players_own() {
+        // These lower the *enemy's* resistance; they protect the player by
+        // exactly nothing and must not be added to the player's total.
+        assert!(resistance_from_mod(&m(
+            "Nearby Enemies have -10% to Chaos Resistance",
+            Some(-10.0)
+        ))
+        .is_empty());
+        assert!(resistance_from_mod(&m(
+            "Enemies you Curse have -5% to Fire Resistance",
+            Some(-5.0)
+        ))
+        .is_empty());
+    }
+
+    #[test]
+    fn ordinary_resistance_still_counts_after_the_enemy_rejection() {
+        assert_eq!(
+            resistance_from_mod(&m("+17% to Fire Resistance", Some(17.0))),
+            vec![(Element::Fire, 17.0)]
+        );
     }
 
     #[test]
