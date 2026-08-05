@@ -1,0 +1,25 @@
+Item Class: Body Armours
+Rarity: Rare
+Ghoul Carapace
+Runeforged Tideseer Mantle
+--------
+Quality: +20% (augmented)
+Armour: 392 (augmented)
+Energy Shield: 113 (augmented)
+Runic Ward: 104 (augmented)
+--------
+Requires: Level 51, 45 Str, 45 Int
+--------
+Sockets: S S
+--------
+Item Level: 53
+--------
++5% to all Elemental Resistances (rune)
++18% to Fire Resistance (rune)
+--------
+{ Prefix Modifier "Instilled" (Tier: 6) — Armour, Energy Shield }
+50(43-55)% increased Armour and Energy Shield
+{ Prefix Modifier "Barbed" (Tier: 5) — Damage, Physical }
+15(11-16) to 23(17-23) Physical Thorns damage
+{ Suffix Modifier "of the Storm" (Tier: 6) — Elemental, Lightning, Resistance }
++18(16-20)% to Lightning Resistance

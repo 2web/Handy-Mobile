@@ -12,6 +12,7 @@ mod input;
 mod llm_client;
 mod managers;
 mod overlay;
+mod poe2;
 pub mod portable;
 mod settings;
 mod shortcut;

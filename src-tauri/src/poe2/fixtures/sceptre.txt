@@ -1,0 +1,25 @@
+Item Class: Sceptres
+Rarity: Rare
+Wrath Call
+Rattling Sceptre
+--------
+Quality: +20% (augmented)
+Spirit: 166 (augmented)
+--------
+Requires: Level 44
+--------
+Sockets: S
+--------
+Item Level: 58
+--------
+Grants Skill: Level 14 Skeletal Warrior Minion
+--------
+{ Prefix Modifier "Count's" (Tier: 4) }
+50(45-50)% increased Spirit
+{ Prefix Modifier "Counselor's" (Tier: 6) }
+16(15-18)% increased Spirit
++22(21-24) to maximum Mana
+{ Suffix Modifier "of the Overseer" (Tier: 2) — Minion, Gem }
++3 to Level of all Minion Skills
+{ Crafted Suffix Modifier "of the Stars" — Minion }
+Minions have 47(40-49)% increased Magnitude of Damaging Ailments
