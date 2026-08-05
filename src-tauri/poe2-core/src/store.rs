@@ -115,8 +115,13 @@ impl Poe2Store {
     ///
     /// The duplicate key is a hash of the raw text: the same item pasted twice
     /// does not create a second record.
+    ///
+    /// The item row and its modifier rows commit together inside one
+    /// transaction: a reader must never be able to observe an item whose
+    /// modifiers are partially written, because later work sums modifiers into
+    /// totals that a truncated item would silently get wrong.
     pub fn add_item(
-        &self,
+        &mut self,
         parsed: &ParsedItem,
         source: &str,
         captured_ts: DateTime<Utc>,
@@ -135,7 +140,8 @@ impl Poe2Store {
             return Ok((id, false));
         }
 
-        self.conn.execute(
+        let tx = self.conn.transaction()?;
+        tx.execute(
             "INSERT INTO items (raw_hash, captured_ts, raw_text, source, item_class, rarity,
                 name, base_type, item_level, requires_level, quality, sockets, properties,
                 requirements, advanced)
@@ -158,8 +164,9 @@ impl Poe2Store {
                 parsed.advanced as i64,
             ],
         )?;
-        let id = self.conn.last_insert_rowid();
-        self.insert_mods(id, parsed)?;
+        let id = tx.last_insert_rowid();
+        Self::insert_mods(&tx, id, parsed)?;
+        tx.commit()?;
         Ok((id, true))
     }
 
@@ -167,8 +174,12 @@ impl Poe2Store {
     ///
     /// That is how the format's central property survives a flat table: a prefix
     /// may produce several lines and still be one modifier.
-    fn insert_mods(&self, item_id: i64, parsed: &ParsedItem) -> Result<()> {
-        let mut stmt = self.conn.prepare(
+    ///
+    /// Takes a `&Connection` rather than `&self` so it can run against either
+    /// the store's own connection or a `Transaction` (which derefs to one) —
+    /// callers decide the transaction boundary, this just does the inserts.
+    fn insert_mods(conn: &Connection, item_id: i64, parsed: &ParsedItem) -> Result<()> {
+        let mut stmt = conn.prepare(
             "INSERT INTO item_mods (item_id, position, effect_index, kind, mod_name, tier,
                 tags, text, value, value_min, value_max)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
@@ -200,8 +211,14 @@ impl Poe2Store {
     }
 
     /// Replaces the parse of an item without touching raw text or capture time.
-    pub fn reparse_item(&self, id: i64, parsed: &ParsedItem) -> Result<()> {
-        self.conn.execute(
+    ///
+    /// The update, the delete of the old modifier rows, and the insert of the
+    /// new ones all happen inside one transaction. Without that, a failure
+    /// between the delete and the re-insert would leave an item with zero
+    /// modifiers that still reads back as a normal, complete `StoredItem`.
+    pub fn reparse_item(&mut self, id: i64, parsed: &ParsedItem) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
             "UPDATE items SET item_class = ?1, rarity = ?2, name = ?3, base_type = ?4,
                 item_level = ?5, requires_level = ?6, quality = ?7, sockets = ?8,
                 properties = ?9, requirements = ?10, advanced = ?11 WHERE id = ?12",
@@ -220,9 +237,9 @@ impl Poe2Store {
                 id,
             ],
         )?;
-        self.conn
-            .execute("DELETE FROM item_mods WHERE item_id = ?1", params![id])?;
-        self.insert_mods(id, parsed)?;
+        tx.execute("DELETE FROM item_mods WHERE item_id = ?1", params![id])?;
+        Self::insert_mods(&tx, id, parsed)?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -349,7 +366,7 @@ mod tests {
 
     #[test]
     fn item_is_saved_with_its_mods() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, created) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         assert!(created);
@@ -369,7 +386,7 @@ mod tests {
 
     #[test]
     fn multiline_mod_keeps_one_position_for_two_effects() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         let saved = s.item(id).unwrap().unwrap();
@@ -386,7 +403,7 @@ mod tests {
 
     #[test]
     fn mod_values_and_ranges_are_stored() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         let saved = s.item(id).unwrap().unwrap();
@@ -404,7 +421,7 @@ mod tests {
 
     #[test]
     fn tags_survive_the_roundtrip() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         let saved = s.item(id).unwrap().unwrap();
@@ -418,7 +435,7 @@ mod tests {
 
     #[test]
     fn same_item_twice_is_stored_once() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (first_id, first_created) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         let (second_id, second_created) = s.add_item(&parsed, "clipboard", Utc::now()).unwrap();
@@ -430,7 +447,7 @@ mod tests {
 
     #[test]
     fn raw_text_is_stored_verbatim() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
         assert_eq!(s.item(id).unwrap().unwrap().raw_text, SCEPTRE);
@@ -439,7 +456,7 @@ mod tests {
 
     #[test]
     fn reparse_replaces_structure_but_not_text() {
-        let s = store();
+        let mut s = store();
         let parsed = parse_item(SCEPTRE).unwrap();
         let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
 
@@ -461,7 +478,7 @@ mod tests {
 
     #[test]
     fn items_are_listed_newest_first() {
-        let s = store();
+        let mut s = store();
         let first = parse_item(SCEPTRE).unwrap();
         s.add_item(&first, "paste", Utc::now()).unwrap();
         let second = parse_item(&SCEPTRE.replace("Wrath Call", "Second Item")).unwrap();
@@ -480,5 +497,100 @@ mod tests {
     #[test]
     fn unknown_item_id_gives_none() {
         assert!(store().item(999).unwrap().is_none());
+    }
+
+    /// Deletes a file on drop even if the test panics, so a failed assertion
+    /// doesn't leave scratch `.db` files behind in the OS temp directory.
+    struct TempDbFile(std::path::PathBuf);
+
+    impl Drop for TempDbFile {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    fn temp_db_path(label: &str) -> TempDbFile {
+        let path = std::env::temp_dir().join(format!(
+            "poe2_store_test_{label}_{}_{}.db",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_file(&path);
+        TempDbFile(path)
+    }
+
+    /// Pins the atomicity the review asked for: a genuine failure mid-write —
+    /// forced here by a second connection holding an exclusive lock on the
+    /// same file, rather than a hook added to `store.rs` for the test's sake —
+    /// must not leave the item's modifiers half-deleted.
+    #[test]
+    fn failed_reparse_does_not_lose_existing_modifiers() {
+        let db = temp_db_path("reparse");
+        let mut s = Poe2Store::open(&db.0).unwrap();
+        let parsed = parse_item(SCEPTRE).unwrap();
+        let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
+
+        // A second connection to the same file holds an exclusive lock, so the
+        // store's transaction cannot acquire a write lock and the whole
+        // reparse fails atomically instead of partially applying.
+        let blocker = Connection::open(&db.0).unwrap();
+        blocker.execute_batch("BEGIN EXCLUSIVE;").unwrap();
+
+        let changed_text = SCEPTRE.replace("Item Level: 58", "Item Level: 60");
+        let changed = parse_item(&changed_text).unwrap();
+        let result = s.reparse_item(id, &changed);
+        assert!(result.is_err(), "expected the locked write to fail");
+
+        blocker.execute_batch("ROLLBACK;").unwrap();
+        drop(blocker);
+
+        let saved = s.item(id).unwrap().unwrap();
+        // The old value and the full set of modifiers survived the failed write.
+        assert_eq!(saved.item_level, Some(58));
+        let counselor_rows = saved
+            .mods
+            .iter()
+            .filter(|m| m.mod_name.as_deref() == Some("Counselor's"))
+            .count();
+        assert_eq!(counselor_rows, 2);
+    }
+
+    /// Same property for `add_item`: a write that fails partway must not leave
+    /// a bare `items` row with no modifiers behind.
+    #[test]
+    fn failed_add_item_creates_nothing() {
+        let db = temp_db_path("add");
+        let mut s = Poe2Store::open(&db.0).unwrap();
+
+        let blocker = Connection::open(&db.0).unwrap();
+        blocker.execute_batch("BEGIN EXCLUSIVE;").unwrap();
+
+        let parsed = parse_item(SCEPTRE).unwrap();
+        let result = s.add_item(&parsed, "paste", Utc::now());
+        assert!(result.is_err(), "expected the locked write to fail");
+
+        blocker.execute_batch("ROLLBACK;").unwrap();
+        drop(blocker);
+
+        assert_eq!(s.items(50).unwrap().len(), 0);
+    }
+
+    /// The happy path this fix must not regress: a successful reparse still
+    /// leaves the full modifier set in place.
+    #[test]
+    fn successful_reparse_leaves_full_modifier_count() {
+        let mut s = store();
+        let parsed = parse_item(SCEPTRE).unwrap();
+        let (id, _) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
+        let before = s.item(id).unwrap().unwrap().mods.len();
+
+        s.reparse_item(id, &parsed).unwrap();
+
+        let after = s.item(id).unwrap().unwrap().mods.len();
+        assert_eq!(before, after);
+        assert!(after > 0);
     }
 }
