@@ -1,8 +1,20 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { commands, type StoredItem } from "../../bindings";
 import { Button } from "../ui/Button";
 import { ItemCard } from "./ItemCard";
+
+// Must match `NOT_AN_ITEM_ERROR` in src-tauri/src/poe2/commands.rs exactly:
+// the backend returns this fixed string for a parse failure specifically so
+// the frontend can tell it apart from a genuine storage failure without
+// parsing arbitrary error prose.
+const NOT_AN_ITEM_ERROR =
+  "That does not look like an item. Hover it in the game and press Ctrl+C.";
+
+// Emitted by the clipboard watcher (src-tauri/src/poe2/watcher.rs) after a
+// background capture is successfully stored. No payload: we just refetch.
+const ITEM_CAPTURED_EVENT = "poe2://item-captured";
 
 export const ItemsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -20,6 +32,18 @@ export const ItemsPage: React.FC = () => {
     void loadItems();
   }, [loadItems]);
 
+  // A background capture from the clipboard watcher has no other way to tell
+  // this page a new item landed, so without this the list only picks it up
+  // after navigating away and back.
+  useEffect(() => {
+    const unlisten = listen(ITEM_CAPTURED_EVENT, () => {
+      void loadItems();
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [loadItems]);
+
   const onPaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
       const text = event.clipboardData.getData("text");
@@ -28,7 +52,11 @@ export const ItemsPage: React.FC = () => {
 
       const result = await commands.poe2AddItem(text);
       if (result.status === "error") {
-        setStatus(t("poe2.items.failed"));
+        setStatus(
+          result.error === NOT_AN_ITEM_ERROR
+            ? t("poe2.items.notAnItem")
+            : t("poe2.items.failed"),
+        );
         return;
       }
       setStatus(result.data.created ? t("poe2.items.saved") : t("poe2.items.duplicate"));
@@ -47,6 +75,8 @@ export const ItemsPage: React.FC = () => {
           : message,
       );
       await loadItems();
+    } else {
+      setStatus(t("poe2.items.rebuildError"));
     }
   }, [loadItems, t]);
 

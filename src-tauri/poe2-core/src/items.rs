@@ -12,7 +12,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use specta::Type;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -67,7 +66,7 @@ impl fmt::Display for NotAnItem {
 
 impl std::error::Error for NotAnItem {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ModKind {
     Prefix,
@@ -105,14 +104,14 @@ impl ModKind {
 }
 
 /// A value with its roll bounds. Bounds are known only in the advanced format.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModValue {
     pub value: f64,
     pub value_min: Option<f64>,
     pub value_max: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModEffect {
     pub text: String,
     pub values: Vec<ModValue>,
@@ -123,7 +122,7 @@ pub struct ModEffect {
 /// Parsing works in blocks — "a header in braces plus every line until the next
 /// header" — not line by line: the Counselor's prefix grants both spirit and
 /// mana, and line-by-line parsing would turn it into two separate modifiers.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemMod {
     pub kind: ModKind,
     pub name: Option<String>,
@@ -142,7 +141,7 @@ impl ItemMod {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ParsedItem {
     pub raw_text: String,
     pub item_class: Option<String>,
@@ -172,7 +171,7 @@ pub fn looks_like_item(text: &str) -> bool {
 }
 
 /// Text -> sections separated by a line of dashes. Blank lines are dropped.
-pub fn split_sections(text: &str) -> Vec<Vec<String>> {
+fn split_sections(text: &str) -> Vec<Vec<String>> {
     let mut sections: Vec<Vec<String>> = Vec::new();
     let mut current: Vec<String> = Vec::new();
 
@@ -272,7 +271,7 @@ fn parse_requires(value: &str) -> (Option<i64>, BTreeMap<String, i64>) {
 /// and blanked out of a working copy of the text so the plain pass never
 /// re-matches their digits (which would split "22(21-24)" into 22, 21 and 24),
 /// then both passes are merged back into source order.
-pub fn parse_values(text: &str) -> Vec<ModValue> {
+fn parse_values(text: &str) -> Vec<ModValue> {
     let mut found: Vec<(usize, ModValue)> = Vec::new();
     let mut masked = text.as_bytes().to_vec();
 
@@ -325,7 +324,7 @@ pub fn parse_values(text: &str) -> Vec<ModValue> {
 /// Anything the game wrapped in braces counts as a header. A line that cannot be
 /// parsed in detail stays a header of unknown kind: turning it into an effect
 /// would write game bookkeeping into the modifier's own description.
-pub fn parse_mod_header(line: &str) -> Option<(ModKind, Option<String>, Option<i64>, Vec<String>)> {
+fn parse_mod_header(line: &str) -> Option<(ModKind, Option<String>, Option<i64>, Vec<String>)> {
     let stripped = line.trim();
     if !(stripped.starts_with('{') && stripped.ends_with('}')) {
         return None;
@@ -371,7 +370,7 @@ pub fn parse_mod_header(line: &str) -> Option<(ModKind, Option<String>, Option<i
 /// An advanced-format section -> modifiers.
 ///
 /// Lines before the first header are kept with kind Unknown so nothing is lost.
-pub fn parse_mod_block(lines: &[String]) -> Vec<ItemMod> {
+fn parse_mod_block(lines: &[String]) -> Vec<ItemMod> {
     let mut mods: Vec<ItemMod> = Vec::new();
     let mut header: Option<(ModKind, Option<String>, Option<i64>, Vec<String>)> = None;
     let mut effects: Vec<ModEffect> = Vec::new();
@@ -417,7 +416,7 @@ fn flush_mod(
 /// In the simple format (advanced descriptions off in the game) only the text is
 /// known — no kind, name, tier, or range. Parsing does not fail; it simply
 /// extracts less.
-pub fn parse_plain_mods(lines: &[String]) -> Vec<ItemMod> {
+fn parse_plain_mods(lines: &[String]) -> Vec<ItemMod> {
     lines
         .iter()
         .map(|line| {

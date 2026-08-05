@@ -6,7 +6,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 use poe2_core::clipboard_watch::{ClipboardWatcher, POLL_INTERVAL};
@@ -23,6 +23,11 @@ use crate::settings;
 /// call to find the flag cleared and start a second thread.
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
+/// Emitted after a clipboard capture is successfully written to the store.
+/// Carries no payload: `ItemsPage` just refetches its list on receipt, the
+/// same way the page already refreshes after a manual paste.
+pub const ITEM_CAPTURED_EVENT: &str = "poe2://item-captured";
+
 /// Starts the polling thread if the setting is on and no thread is already
 /// running. Called once at startup, and again from the settings command
 /// whenever the toggle is switched on, so enabling clipboard watching takes
@@ -30,7 +35,8 @@ static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 /// lives for the rest of the process (barring a genuine clipboard failure):
 /// later disabling the setting does not stop it, only pauses its reads.
 pub fn spawn(app: AppHandle) {
-    if !settings::get_settings(&app).poe2_clipboard_watch {
+    let settings = settings::get_settings(&app);
+    if !(settings.poe2_enabled && settings.poe2_clipboard_watch) {
         return;
     }
 
@@ -69,7 +75,15 @@ pub fn spawn(app: AppHandle) {
                 let Ok(mut store) = crate::poe2::commands::store_for(&store_app) else {
                     return;
                 };
-                let _ = store.add_item(&parsed, "clipboard", chrono::Utc::now());
+                if store
+                    .add_item(&parsed, "clipboard", chrono::Utc::now())
+                    .is_ok()
+                {
+                    // Only on a successful store: the page must refetch when a
+                    // capture actually landed, not on a write failure it can't
+                    // do anything about anyway.
+                    let _ = store_app.emit(ITEM_CAPTURED_EVENT, ());
+                }
             },
         );
 
@@ -82,7 +96,8 @@ pub fn spawn(app: AppHandle) {
             // One thread lives for the process once started; a sleeping
             // thread costs nothing, and while the setting is off the
             // clipboard is still never read, so the privacy commitment holds.
-            if settings::get_settings(&app).poe2_clipboard_watch {
+            let settings = settings::get_settings(&app);
+            if settings.poe2_enabled && settings.poe2_clipboard_watch {
                 watcher.check_once();
             }
             std::thread::sleep(POLL_INTERVAL);

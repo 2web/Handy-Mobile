@@ -28,10 +28,12 @@
       "saved": "Item saved.",
       "duplicate": "This item is already saved.",
       "failed": "Could not parse the item.",
+      "notAnItem": "That does not look like an item. Hover it in the game and press Ctrl+C.",
       "empty": "No items captured yet.",
       "rebuild": "Reparse stored items",
       "rebuilt": "Reparsed {{count}} items.",
       "rebuildFailed": "{{count}} could not be parsed and were left as they were.",
+      "rebuildError": "Could not reparse the stored items.",
       "rune": "rune",
       "itemLevel": "ilvl {{level}}",
       "simpleFormat": "Advanced item descriptions are off in the game — tiers and roll ranges are unavailable."

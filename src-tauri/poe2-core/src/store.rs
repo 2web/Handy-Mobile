@@ -10,7 +10,7 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -136,8 +136,19 @@ impl Poe2Store {
     ) -> Result<(i64, bool)> {
         let raw_hash = format!("{:x}", Sha256::digest(parsed.raw_text.as_bytes()));
 
-        let existing: Option<i64> = self
+        // The duplicate check runs inside the same transaction as the insert,
+        // not before it: a background capture and a manual paste of the same
+        // item can otherwise both read "no existing row" before either writes,
+        // and the loser then trips the `raw_hash` UNIQUE constraint instead of
+        // returning the existing id cleanly. `Immediate` takes SQLite's write
+        // lock at `BEGIN` rather than at the first write statement, so a
+        // second connection's transaction blocks (subject to `busy_timeout`)
+        // for the whole duration of this one instead of racing its own SELECT
+        // against this transaction's not-yet-committed INSERT.
+        let tx = self
             .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let existing: Option<i64> = tx
             .query_row(
                 "SELECT id FROM items WHERE raw_hash = ?1",
                 params![raw_hash],
@@ -148,7 +159,6 @@ impl Poe2Store {
             return Ok((id, false));
         }
 
-        let tx = self.conn.transaction()?;
         tx.execute(
             "INSERT INTO items (raw_hash, captured_ts, raw_text, source, item_class, rarity,
                 name, base_type, item_level, requires_level, quality, sockets, properties,
@@ -599,6 +609,27 @@ mod tests {
         drop(blocker);
 
         assert_eq!(s.items(50).unwrap().len(), 0);
+    }
+
+    /// Regression test for moving the duplicate check inside `add_item`'s
+    /// transaction: a duplicate must still return `(existing_id, false)` and
+    /// write nothing — no second item row, no second set of modifier rows —
+    /// rather than surfacing a raw `UNIQUE constraint failed` error.
+    #[test]
+    fn duplicate_inside_transaction_returns_existing_id_and_writes_nothing() {
+        let mut s = store();
+        let parsed = parse_item(SCEPTRE).unwrap();
+        let (first_id, first_created) = s.add_item(&parsed, "paste", Utc::now()).unwrap();
+        assert!(first_created);
+        let mods_before = s.item(first_id).unwrap().unwrap().mods.len();
+
+        let (second_id, second_created) = s.add_item(&parsed, "clipboard", Utc::now()).unwrap();
+        assert_eq!(second_id, first_id);
+        assert!(!second_created);
+
+        assert_eq!(s.items(50).unwrap().len(), 1);
+        let mods_after = s.item(first_id).unwrap().unwrap().mods.len();
+        assert_eq!(mods_before, mods_after);
     }
 
     /// The happy path this fix must not regress: a successful reparse still

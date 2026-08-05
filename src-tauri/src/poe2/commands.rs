@@ -29,12 +29,18 @@ pub fn store_for(app: &AppHandle) -> Result<Poe2Store, String> {
     Poe2Store::open(&dir.join("poe2.db")).map_err(|e| e.to_string())
 }
 
+/// The fixed error text `poe2_add_item` returns when the pasted text does not
+/// parse as an item. Exported so the frontend can match on it and show a
+/// different message than a genuine storage failure — matching a known,
+/// fixed string here is simpler and less brittle than parsing prose out of
+/// an arbitrary storage error on the frontend.
+pub const NOT_AN_ITEM_ERROR: &str =
+    "That does not look like an item. Hover it in the game and press Ctrl+C.";
+
 #[tauri::command]
 #[specta::specta]
 pub fn poe2_add_item(app: AppHandle, text: String) -> Result<AddItemResult, String> {
-    let parsed = parse_item(&text).map_err(|_| {
-        "That does not look like an item. Hover it in the game and press Ctrl+C.".to_string()
-    })?;
+    let parsed = parse_item(&text).map_err(|_| NOT_AN_ITEM_ERROR.to_string())?;
 
     let mut store = store_for(&app)?;
     let (id, created) = store
