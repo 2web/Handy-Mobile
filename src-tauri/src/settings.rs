@@ -470,6 +470,8 @@ pub struct AppSettings {
     pub poe2_enabled: bool,
     #[serde(default = "default_poe2_clipboard_watch")]
     pub poe2_clipboard_watch: bool,
+    #[serde(default)]
+    pub poe2_log_path: Option<String>,
 }
 
 fn default_model() -> String {
@@ -959,6 +961,7 @@ pub fn get_default_settings() -> AppSettings {
         overlay_style: default_overlay_style(),
         poe2_enabled: false,
         poe2_clipboard_watch: false,
+        poe2_log_path: None,
     }
 }
 

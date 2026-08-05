@@ -4,4 +4,5 @@
 //! needs an `AppHandle`.
 
 pub mod commands;
+pub mod tracker;
 pub mod watcher;

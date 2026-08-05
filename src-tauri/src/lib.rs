@@ -760,6 +760,9 @@ pub fn run(cli_args: CliArgs) {
             poe2::commands::poe2_rebuild_items,
             poe2::commands::change_poe2_enabled_setting,
             poe2::commands::change_poe2_clipboard_watch_setting,
+            poe2::commands::poe2_state,
+            poe2::commands::poe2_rebuild_derived,
+            poe2::commands::change_poe2_log_path_setting,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,
@@ -999,6 +1002,7 @@ pub fn run(cli_args: CliArgs) {
             }
 
             crate::poe2::watcher::spawn(app.handle().clone());
+            crate::poe2::tracker::spawn(app.handle().clone());
 
             Ok(())
         })
