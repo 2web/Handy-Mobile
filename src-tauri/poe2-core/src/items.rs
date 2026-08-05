@@ -472,15 +472,17 @@ pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
             item.mods.extend(parse_mod_block(section));
             continue;
         }
-        let pairs: Vec<Option<(String, String)>> =
-            section.iter().map(|line| key_value(line)).collect();
-        if pairs.iter().any(Option::is_none) {
-            // Not key-value pairs, so runes or simple-format modifiers. The
-            // unknown is kept, not discarded.
-            item.mods.extend(parse_plain_mods(section));
-            continue;
-        }
-        for (key, value) in pairs.into_iter().flatten() {
+        // Classified per line, not per section: a section can mix a real
+        // `Key: value` property with a bare rune or simple-format modifier
+        // line, and treating the whole section as "not key-value pairs" would
+        // turn the property line itself into a bogus modifier (its number
+        // would then be read as a rolled value).
+        let mut plain_lines: Vec<String> = Vec::new();
+        for line in section {
+            let Some((key, value)) = key_value(line) else {
+                plain_lines.push(line.clone());
+                continue;
+            };
             match key.as_str() {
                 "Item Level" => item.item_level = value.parse().ok(),
                 "Requires" => {
@@ -500,6 +502,11 @@ pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
                 }
                 _ => {}
             }
+        }
+        if !plain_lines.is_empty() {
+            // Runes or simple-format modifiers. The unknown is kept, not
+            // discarded.
+            item.mods.extend(parse_plain_mods(&plain_lines));
         }
     }
 
@@ -625,7 +632,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_section_is_skipped_without_crashing() {
+    fn unknown_section_becomes_a_plain_modifier_without_crashing() {
         let text = "Item Class: Sceptres\nRarity: Rare\nWrath Call\nRattling Sceptre\n\
                     --------\nSomething the parser has never seen\n--------\nItem Level: 58\n";
         assert_eq!(parse_item(text).unwrap().item_level, Some(58));
@@ -981,5 +988,33 @@ mod tests {
             item.mods[0].effects[0].text,
             "A brand new effect with no numbers"
         );
+    }
+
+    #[test]
+    fn property_line_next_to_a_bare_line_is_not_turned_into_a_modifier() {
+        // A section can mix a real `Key: value` property with a bare line
+        // (e.g. a "Corrupted" flag). The property line must stay a property,
+        // not get swept into parse_plain_mods along with the bare line.
+        let text = "Item Class: Sceptres\nRarity: Rare\nWrath Call\nRattling Sceptre\n\
+                    --------\nItem Level: 53\nCorrupted\n";
+        let item = parse_item(text).unwrap();
+        assert_eq!(item.item_level, Some(53));
+        assert_eq!(item.mods.len(), 1);
+        assert_eq!(item.mods[0].text(), "Corrupted");
+        assert!(!item.mods.iter().any(|m| m.text().contains("Item Level")));
+    }
+
+    #[test]
+    fn property_line_does_not_leak_its_number_into_mod_values() {
+        let text = "Item Class: Sceptres\nRarity: Rare\nWrath Call\nRattling Sceptre\n\
+                    --------\nItem Level: 53\nCorrupted\n";
+        let item = parse_item(text).unwrap();
+        let leaked = item
+            .mods
+            .iter()
+            .flat_map(|m| &m.effects)
+            .flat_map(|e| &e.values)
+            .any(|v| v.value == 53.0);
+        assert!(!leaked);
     }
 }
