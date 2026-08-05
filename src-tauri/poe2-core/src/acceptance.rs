@@ -76,6 +76,13 @@ mod tests {
     }
 
     /// Criterion 6: rebuilding reparses stored items from raw text.
+    ///
+    /// A bare count of modifiers would pass even if reparsing scrambled their
+    /// structure — a prefix relabelled as a suffix, a tier dropped, a rune
+    /// duplicated in place of a missing affix. So this compares the reparsed,
+    /// stored structure against a fresh `parse_item` of the same raw text,
+    /// field by field and in order: that is what "reparses stored items"
+    /// actually promises.
     #[test]
     fn rebuild_reparses_stored_items() {
         let mut store = Poe2Store::in_memory().unwrap();
@@ -87,19 +94,78 @@ mod tests {
         let reparsed = parse_item(&raw[0].1).unwrap();
         store.reparse_item(id, &reparsed).unwrap();
 
-        assert_eq!(store.item(id).unwrap().unwrap().mods.len(), 5);
+        let stored_mods = store.item(id).unwrap().unwrap().mods;
+        assert_eq!(stored_mods.len(), 5);
+        assert_eq!(reparsed.mods.len(), 5);
+
+        // A row is one effect; effects of the same modifier share a position.
+        // Compare the first effect row at each position against the matching
+        // freshly parsed modifier, in order: kind, name, tier and first value.
+        for (position, expected) in reparsed.mods.iter().enumerate() {
+            let actual_first_effect = stored_mods
+                .iter()
+                .find(|m| m.position == position as i64 && m.effect_index == 0)
+                .unwrap_or_else(|| panic!("no stored modifier at position {position}"));
+
+            assert_eq!(
+                actual_first_effect.kind,
+                expected.kind.as_str(),
+                "kind mismatch at position {position}"
+            );
+            assert_eq!(
+                actual_first_effect.mod_name, expected.name,
+                "name mismatch at position {position}"
+            );
+            assert_eq!(
+                actual_first_effect.tier, expected.tier,
+                "tier mismatch at position {position}"
+            );
+            assert_eq!(
+                actual_first_effect.value,
+                expected.effects[0].values.first().map(|v| v.value),
+                "first value mismatch at position {position}"
+            );
+        }
     }
 
-    /// Criterion 7: runes are stored apart and carry their values.
+    /// Criterion 7: runes are stored apart from affixes, not just summed.
+    ///
+    /// Summing `ModKind::Rune` values alone would not catch a misclassification:
+    /// the body armour's suffix `of the Storm` is +18% Lightning Resistance,
+    /// the same magnitude as the `+18% to Fire Resistance` rune, so a bug that
+    /// tagged the suffix as a rune and dropped the fire rune would still sum to
+    /// 23.0. So this asserts on the identity of the rune set — its exact texts,
+    /// that neither carries a name or tier, and that no affix text leaks into
+    /// it — not only on a total.
     #[test]
     fn runes_contribute_resistances() {
         let item = parse_item(BODY_ARMOUR).unwrap();
-        let total: f64 = item
+        let runes: Vec<_> = item
             .mods
             .iter()
             .filter(|m| m.kind == ModKind::Rune)
-            .map(|m| m.effects[0].values[0].value)
-            .sum();
+            .collect();
+
+        let mut rune_texts: Vec<&str> = runes.iter().map(|m| m.effects[0].text.as_str()).collect();
+        rune_texts.sort();
+        assert_eq!(
+            rune_texts,
+            vec![
+                "+18% to Fire Resistance",
+                "+5% to all Elemental Resistances"
+            ]
+        );
+        assert!(runes.iter().all(|m| m.name.is_none() && m.tier.is_none()));
+
+        let affix_texts: Vec<&str> = item
+            .mods
+            .iter()
+            .filter(|m| m.kind != ModKind::Rune)
+            .flat_map(|m| m.effects.iter().map(|e| e.text.as_str()))
+            .collect();
+        assert!(rune_texts.iter().all(|t| !affix_texts.contains(t)));
+
+        let total: f64 = runes.iter().map(|m| m.effects[0].values[0].value).sum();
         assert_eq!(total, 23.0);
     }
 }
