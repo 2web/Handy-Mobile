@@ -10,7 +10,12 @@ import { useSettings } from "../../hooks/useSettings";
 const STATE_CHANGED_EVENT = "poe2://state-changed";
 
 function formatDuration(seconds: number | null): string {
-  if (seconds === null) return "—";
+  // The backend reports a signed duration honestly (clock drift, a machine
+  // waking from sleep, etc. can put `zone_since` slightly in the future).
+  // A negative duration is not a duration, so it's treated the same as
+  // unknown here rather than letting it flow into the floor/modulo math
+  // below, which produces nonsense like "-1 min -5 s" for negative input.
+  if (seconds === null || seconds < 0) return "—";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} min ${seconds % 60} s`;
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
@@ -33,6 +38,10 @@ export const ProgressTab: React.FC = () => {
       void load();
     });
     return () => {
+      // unlisten() resolves asynchronously, so an event landing between
+      // unmount and that resolution can still trigger one more load() /
+      // setSnapshot() call on an unmounted component. Known and benign
+      // under React 18 (matches the same pattern in ItemsPage.tsx).
       void unlisten.then((fn) => fn());
     };
   }, [load]);
