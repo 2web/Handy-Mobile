@@ -9,3 +9,6 @@
 pub mod clipboard_watch;
 pub mod items;
 pub mod store;
+
+#[cfg(test)]
+mod acceptance;
