@@ -29,6 +29,20 @@ static REQUIRES_LEVEL_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)Level\s+(\
 static REQUIRES_STAT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)(\d+)\s+(Str|Dex|Int)").unwrap());
 
+// 50(45-50) — the rolled value plus the tier bounds. Negative bounds occur too:
+// "-10(-12--8)", where the separator is the third dash in a row.
+static RANGE_VALUE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(-?\d+(?:\.\d+)?)\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)").unwrap());
+static PLAIN_VALUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"[-+]?\d+(?:\.\d+)?").unwrap());
+
+// { Crafted Suffix Modifier "of the Stars" (Tier: 4) — Minion, Gem }
+static MOD_HEADER_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"^\{\s*(?P<crafted>Crafted\s+)?(?P<kind>[A-Za-z]+\s+)?Modifier(?:\s+"(?P<name>[^"]*)")?(?:\s*\(Tier:\s*(?P<tier>\d+)\))?(?:\s*[—–-]\s*(?P<tags>[^}]*?))?\s*\}$"#,
+    )
+    .unwrap()
+});
+
 /// Keys that own a section and a meaning of their own; they never land in the
 /// general property bag.
 const SPECIAL_KEYS: [&str; 5] = ["Item Class", "Rarity", "Requires", "Item Level", "Sockets"];
@@ -44,6 +58,81 @@ impl fmt::Display for NotAnItem {
 }
 
 impl std::error::Error for NotAnItem {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum ModKind {
+    Prefix,
+    Suffix,
+    Implicit,
+    Crafted,
+    Rune,
+    Unknown,
+}
+
+impl ModKind {
+    /// Stored in SQLite as text rather than an integer discriminant, so a
+    /// hand-run SELECT stays readable and adding a kind later renumbers nothing.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ModKind::Prefix => "prefix",
+            ModKind::Suffix => "suffix",
+            ModKind::Implicit => "implicit",
+            ModKind::Crafted => "crafted",
+            ModKind::Rune => "rune",
+            ModKind::Unknown => "unknown",
+        }
+    }
+
+    pub fn from_str_or_unknown(raw: &str) -> ModKind {
+        match raw.to_lowercase().as_str() {
+            "prefix" => ModKind::Prefix,
+            "suffix" => ModKind::Suffix,
+            "implicit" => ModKind::Implicit,
+            "crafted" => ModKind::Crafted,
+            "rune" => ModKind::Rune,
+            _ => ModKind::Unknown,
+        }
+    }
+}
+
+/// A value with its roll bounds. Bounds are known only in the advanced format.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ModValue {
+    pub value: f64,
+    pub value_min: Option<f64>,
+    pub value_max: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ModEffect {
+    pub text: String,
+    pub values: Vec<ModValue>,
+}
+
+/// One modifier, which may span several lines of text.
+///
+/// Parsing works in blocks — "a header in braces plus every line until the next
+/// header" — not line by line: the Counselor's prefix grants both spirit and
+/// mana, and line-by-line parsing would turn it into two separate modifiers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct ItemMod {
+    pub kind: ModKind,
+    pub name: Option<String>,
+    pub tier: Option<i64>,
+    pub tags: Vec<String>,
+    pub effects: Vec<ModEffect>,
+}
+
+impl ItemMod {
+    pub fn text(&self) -> String {
+        self.effects
+            .iter()
+            .map(|e| e.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
 pub struct ParsedItem {
@@ -62,6 +151,7 @@ pub struct ParsedItem {
     pub sockets: Option<String>,
     pub properties: BTreeMap<String, String>,
     pub advanced: bool,
+    pub mods: Vec<ItemMod>,
 }
 
 /// A strict test: only text starting with `Item Class:` is processed.
@@ -167,6 +257,121 @@ fn parse_requires(value: &str) -> (Option<i64>, BTreeMap<String, i64>) {
     (level, stats)
 }
 
+/// The numbers in a modifier. In the advanced format they come with roll bounds.
+pub fn parse_values(text: &str) -> Vec<ModValue> {
+    let ranged: Vec<ModValue> = RANGE_VALUE_RE
+        .captures_iter(text)
+        .filter_map(|caps| {
+            Some(ModValue {
+                value: caps.get(1)?.as_str().parse().ok()?,
+                value_min: caps.get(2)?.as_str().parse().ok(),
+                value_max: caps.get(3)?.as_str().parse().ok(),
+            })
+        })
+        .collect();
+    if !ranged.is_empty() {
+        return ranged;
+    }
+
+    PLAIN_VALUE_RE
+        .find_iter(text)
+        .filter_map(|m| m.as_str().parse().ok())
+        .map(|value| ModValue {
+            value,
+            value_min: None,
+            value_max: None,
+        })
+        .collect()
+}
+
+/// A modifier header -> (kind, name, tier, tags). Not a header -> None.
+///
+/// Anything the game wrapped in braces counts as a header. A line that cannot be
+/// parsed in detail stays a header of unknown kind: turning it into an effect
+/// would write game bookkeeping into the modifier's own description.
+pub fn parse_mod_header(line: &str) -> Option<(ModKind, Option<String>, Option<i64>, Vec<String>)> {
+    let stripped = line.trim();
+    if !(stripped.starts_with('{') && stripped.ends_with('}')) {
+        return None;
+    }
+
+    let caps = match MOD_HEADER_RE.captures(stripped) {
+        Some(caps) => caps,
+        None => return Some((ModKind::Unknown, None, None, Vec::new())),
+    };
+
+    let kind = if caps.name("crafted").is_some() {
+        ModKind::Crafted
+    } else {
+        match caps.name("kind") {
+            Some(m) => ModKind::from_str_or_unknown(m.as_str().trim()),
+            None => ModKind::Unknown,
+        }
+    };
+
+    let name = caps.name("name").map(|m| m.as_str().to_string());
+    let tier = caps
+        .name("tier")
+        .and_then(|m| m.as_str().parse::<i64>().ok());
+    let tags = caps
+        .name("tags")
+        .map(|m| {
+            m.as_str()
+                .split(',')
+                .map(str::trim)
+                .filter(|t| !t.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Some((kind, name, tier, tags))
+}
+
+/// An advanced-format section -> modifiers.
+///
+/// Lines before the first header are kept with kind Unknown so nothing is lost.
+pub fn parse_mod_block(lines: &[String]) -> Vec<ItemMod> {
+    let mut mods: Vec<ItemMod> = Vec::new();
+    let mut header: Option<(ModKind, Option<String>, Option<i64>, Vec<String>)> = None;
+    let mut effects: Vec<ModEffect> = Vec::new();
+
+    for line in lines {
+        if let Some(parsed) = parse_mod_header(line) {
+            flush_mod(&mut mods, &header, &mut effects);
+            header = Some(parsed);
+            continue;
+        }
+        effects.push(ModEffect {
+            text: line.clone(),
+            values: parse_values(line),
+        });
+    }
+    flush_mod(&mut mods, &header, &mut effects);
+    mods
+}
+
+fn flush_mod(
+    mods: &mut Vec<ItemMod>,
+    header: &Option<(ModKind, Option<String>, Option<i64>, Vec<String>)>,
+    effects: &mut Vec<ModEffect>,
+) {
+    if effects.is_empty() {
+        return;
+    }
+    let (kind, name, tier, tags) = match header {
+        Some((kind, name, tier, tags)) => (*kind, name.clone(), *tier, tags.clone()),
+        None => (ModKind::Unknown, None, None, Vec::new()),
+    };
+    mods.push(ItemMod {
+        kind,
+        name,
+        tier,
+        tags,
+        effects: std::mem::take(effects),
+    });
+}
+
 /// Item text -> structure. Returns `NotAnItem` when the text is not an item.
 pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
     if !looks_like_item(text) {
@@ -194,6 +399,13 @@ pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
     };
 
     for section in sections.iter().skip(1) {
+        if section.iter().any(|line| line.starts_with('{')) {
+            // Braces appear only when the game's advanced item descriptions are
+            // enabled. Their presence is the mode indicator.
+            item.advanced = true;
+            item.mods.extend(parse_mod_block(section));
+            continue;
+        }
         let pairs: Vec<Option<(String, String)>> =
             section.iter().map(|line| key_value(line)).collect();
         if pairs.iter().any(Option::is_none) {
@@ -350,5 +562,227 @@ mod tests {
         let text = "Item Class: Sceptres\nRarity: Rare\nWrath Call\nRattling Sceptre\n\
                     --------\nSomething the parser has never seen\n--------\nItem Level: 58\n";
         assert_eq!(parse_item(text).unwrap().item_level, Some(58));
+    }
+
+    #[test]
+    fn value_with_roll_range() {
+        assert_eq!(
+            parse_values("50(45-50)% increased Spirit"),
+            vec![ModValue {
+                value: 50.0,
+                value_min: Some(45.0),
+                value_max: Some(50.0)
+            }]
+        );
+    }
+
+    #[test]
+    fn value_without_range() {
+        assert_eq!(
+            parse_values("+22 to maximum Mana"),
+            vec![ModValue {
+                value: 22.0,
+                value_min: None,
+                value_max: None
+            }]
+        );
+    }
+
+    #[test]
+    fn two_ranges_in_one_effect() {
+        // "from and to", where each half carries its own roll range.
+        assert_eq!(
+            parse_values("15(11-16) to 23(17-23) Physical Thorns damage"),
+            vec![
+                ModValue {
+                    value: 15.0,
+                    value_min: Some(11.0),
+                    value_max: Some(16.0)
+                },
+                ModValue {
+                    value: 23.0,
+                    value_min: Some(17.0),
+                    value_max: Some(23.0)
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn negative_range_is_parsed() {
+        assert_eq!(
+            parse_values("-10(-12--8)% reduced something"),
+            vec![ModValue {
+                value: -10.0,
+                value_min: Some(-12.0),
+                value_max: Some(-8.0)
+            }]
+        );
+    }
+
+    #[test]
+    fn effect_without_numbers_has_no_values() {
+        assert!(parse_values("Minions cannot be Poisoned").is_empty());
+    }
+
+    #[test]
+    fn mod_header_prefix() {
+        assert_eq!(
+            parse_mod_header("{ Prefix Modifier \"Count's\" (Tier: 4) }"),
+            Some((
+                ModKind::Prefix,
+                Some("Count's".to_string()),
+                Some(4),
+                vec![]
+            ))
+        );
+    }
+
+    #[test]
+    fn mod_header_with_tags() {
+        assert_eq!(
+            parse_mod_header("{ Suffix Modifier \"of the Overseer\" (Tier: 2) — Minion, Gem }"),
+            Some((
+                ModKind::Suffix,
+                Some("of the Overseer".to_string()),
+                Some(2),
+                vec!["Minion".to_string(), "Gem".to_string()]
+            ))
+        );
+    }
+
+    #[test]
+    fn crafted_mod_has_its_own_kind_and_no_tier() {
+        assert_eq!(
+            parse_mod_header("{ Crafted Suffix Modifier \"of the Stars\" — Minion }"),
+            Some((
+                ModKind::Crafted,
+                Some("of the Stars".to_string()),
+                None,
+                vec!["Minion".to_string()]
+            ))
+        );
+    }
+
+    #[test]
+    fn implicit_mod_header() {
+        assert_eq!(
+            parse_mod_header("{ Implicit Modifier — Attack }"),
+            Some((ModKind::Implicit, None, None, vec!["Attack".to_string()]))
+        );
+    }
+
+    #[test]
+    fn ordinary_line_is_not_a_mod_header() {
+        assert_eq!(parse_mod_header("+22(21-24) to maximum Mana"), None);
+    }
+
+    #[test]
+    fn unreadable_header_in_braces_is_still_a_header() {
+        // The unknown must not break parsing, and must not masquerade as an effect.
+        assert_eq!(
+            parse_mod_header("{ Peculiar Modifier of an unknown shape and form }"),
+            Some((ModKind::Unknown, None, None, vec![]))
+        );
+    }
+
+    #[test]
+    fn sceptre_has_four_mods() {
+        let item = parse_item(SCEPTRE).unwrap();
+        assert_eq!(item.mods.len(), 4);
+        let kinds: Vec<ModKind> = item.mods.iter().map(|m| m.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                ModKind::Prefix,
+                ModKind::Prefix,
+                ModKind::Suffix,
+                ModKind::Crafted
+            ]
+        );
+    }
+
+    #[test]
+    fn multiline_mod_is_one_mod_with_two_effects() {
+        // The central check: Counselor's granted both spirit and mana.
+        let item = parse_item(SCEPTRE).unwrap();
+        let counselor = item
+            .mods
+            .iter()
+            .find(|m| m.name.as_deref() == Some("Counselor's"))
+            .unwrap();
+        assert_eq!(counselor.effects.len(), 2);
+        assert_eq!(
+            counselor.effects[0].values,
+            vec![ModValue {
+                value: 16.0,
+                value_min: Some(15.0),
+                value_max: Some(18.0)
+            }]
+        );
+        assert_eq!(
+            counselor.effects[1].values,
+            vec![ModValue {
+                value: 22.0,
+                value_min: Some(21.0),
+                value_max: Some(24.0)
+            }]
+        );
+    }
+
+    #[test]
+    fn mod_carries_tier_and_tags() {
+        let item = parse_item(SCEPTRE).unwrap();
+        let overseer = item
+            .mods
+            .iter()
+            .find(|m| m.name.as_deref() == Some("of the Overseer"))
+            .unwrap();
+        assert_eq!(overseer.tier, Some(2));
+        assert_eq!(overseer.tags, vec!["Minion".to_string(), "Gem".to_string()]);
+    }
+
+    #[test]
+    fn mod_text_joins_its_effects() {
+        let item = parse_item(SCEPTRE).unwrap();
+        let counselor = item
+            .mods
+            .iter()
+            .find(|m| m.name.as_deref() == Some("Counselor's"))
+            .unwrap();
+        assert_eq!(
+            counselor.text(),
+            "16(15-18)% increased Spirit\n+22(21-24) to maximum Mana"
+        );
+    }
+
+    #[test]
+    fn advanced_format_is_detected() {
+        assert!(parse_item(SCEPTRE).unwrap().advanced);
+    }
+
+    #[test]
+    fn armour_mods_include_two_range_effect() {
+        let item = parse_item(BODY_ARMOUR).unwrap();
+        let barbed = item
+            .mods
+            .iter()
+            .find(|m| m.name.as_deref() == Some("Barbed"))
+            .unwrap();
+        assert_eq!(
+            barbed.effects[0].values,
+            vec![
+                ModValue {
+                    value: 15.0,
+                    value_min: Some(11.0),
+                    value_max: Some(16.0)
+                },
+                ModValue {
+                    value: 23.0,
+                    value_min: Some(17.0),
+                    value_max: Some(23.0)
+                },
+            ]
+        );
     }
 }
