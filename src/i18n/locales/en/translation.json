@@ -78,6 +78,7 @@
       "short": "short {{amount}}",
       "atCap": "at the cap",
       "noItems": "No items captured yet — copy one in the game and paste it on the Items tab.",
+      "loadFailed": "Could not read the equipment data.",
       "penaltyTitle": "Campaign resistance penalty",
       "penaltyUnset": "Not set. Totals below are what your gear gives, before the campaign penalty — your character panel will show less.",
       "penaltyHow": "Open the character panel in the game, compare one elemental resistance with the figure above, and enter the difference.",

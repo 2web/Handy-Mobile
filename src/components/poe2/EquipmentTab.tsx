@@ -1,28 +1,49 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { commands, type EquipmentView } from "../../bindings";
+import { listen } from "@tauri-apps/api/event";
+import { commands, type EquipmentItemStatus, type EquipmentView } from "../../bindings";
 import { Button } from "../ui/Button";
+
+// Emitted by the clipboard watcher (src-tauri/src/poe2/watcher.rs) after a
+// background capture is successfully stored. No payload: we just refetch.
+const ITEM_CAPTURED_EVENT = "poe2://item-captured";
 
 export const EquipmentTab: React.FC = () => {
   const { t } = useTranslation();
   const [view, setView] = useState<EquipmentView | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [penaltyDraft, setPenaltyDraft] = useState("");
   const [penaltyError, setPenaltyError] = useState(false);
 
   const load = useCallback(async () => {
     const result = await commands.poe2Equipment();
     if (result.status === "ok") {
+      setLoadError(null);
       setView(result.data);
       setPenaltyDraft(
         result.data.summary.penalty === null
           ? ""
           : String(result.data.summary.penalty),
       );
+    } else {
+      setLoadError(result.error);
     }
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // A background capture from the clipboard watcher has no other way to tell
+  // this tab a new item landed, so without this the totals only pick it up
+  // after navigating away and back.
+  useEffect(() => {
+    const unlisten = listen(ITEM_CAPTURED_EVENT, () => {
+      void load();
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [load]);
 
   const savePenalty = useCallback(async () => {
@@ -52,21 +73,31 @@ export const EquipmentTab: React.FC = () => {
     [load],
   );
 
-  if (!view) return null;
+  if (!view) {
+    if (loadError) {
+      return (
+        <div className="p-4 space-y-1">
+          <p className="text-sm text-red-400">{t("poe2.equipment.loadFailed")}</p>
+          <p className="text-sm opacity-70">{loadError}</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   if (view.items.length === 0) {
     return <p className="p-4 text-sm opacity-70">{t("poe2.equipment.noItems")}</p>;
   }
 
-  const slotName = (slot: string) => t(`poe2.equipment.slot.${slot}`);
+  const slotName = (slot: string) => t(`poe2.equipment.slot.${slot}`, slot);
 
-  const statusLabels: Record<string, string> = {
+  const statusLabels: Record<EquipmentItemStatus, string> = {
     worn: t("poe2.equipment.statusWorn"),
     superseded: t("poe2.equipment.statusSuperseded"),
     unrecognised: t("poe2.equipment.statusUnrecognised"),
     excluded: t("poe2.equipment.statusExcluded"),
   };
-  const statusLabel = (status: string) => statusLabels[status] ?? status;
+  const statusLabel = (status: EquipmentItemStatus) => statusLabels[status];
 
   return (
     <div className="p-4 space-y-4">
@@ -90,9 +121,11 @@ export const EquipmentTab: React.FC = () => {
                     {t("poe2.equipment.total")}: {l.total}%
                   </span>
                 )}
-                <span className="opacity-60">
-                  {t("poe2.equipment.cap")} {l.cap}%
-                </span>
+                {l.total !== null && (
+                  <span className="opacity-60">
+                    {t("poe2.equipment.cap")} {l.cap}%
+                  </span>
+                )}
                 {l.total !== null && (
                   <span className={l.short_by === null ? "opacity-70" : "font-semibold"}>
                     {l.short_by === null

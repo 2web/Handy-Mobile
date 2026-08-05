@@ -1054,12 +1054,9 @@ export type EngineType =
  * the file, so this one variant covers the whole transcribe-cpp family.
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
-export type EquipmentItem = { id: number; name: string | null; base_type: string | null; item_class: string | null; slot: Slot | null; excluded: boolean; 
-/**
- * "worn" | "superseded" | "unrecognised" | "excluded"
- */
-status: string }
-export type EquipmentSummary = { lines: ResistanceLine[]; penalty: number | null; worn: ([number, Slot])[]; superseded: number[]; unrecognised: number[]; empty_slots: Slot[] }
+export type EquipmentItem = { id: number; name: string | null; base_type: string | null; item_class: string | null; slot: Slot | null; excluded: boolean; status: EquipmentItemStatus }
+export type EquipmentItemStatus = "worn" | "superseded" | "unrecognised" | "excluded"
+export type EquipmentSummary = { lines: ResistanceLine[]; penalty: number | null; empty_slots: Slot[] }
 export type EquipmentView = { summary: EquipmentSummary; items: EquipmentItem[] }
 export type GpuDeviceOption = { id: number; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }

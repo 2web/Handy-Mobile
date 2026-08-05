@@ -33,8 +33,13 @@ pub struct ResistanceLine {
 pub struct EquipmentSummary {
     pub lines: Vec<ResistanceLine>,
     pub penalty: Option<f64>,
+    /// Available to Rust callers (and tests) to work out per-item status, but not
+    /// read by the frontend — `poe2_equipment` already folds this into `items`.
+    #[serde(skip)]
     pub worn: Vec<(i64, Slot)>,
+    #[serde(skip)]
     pub superseded: Vec<i64>,
+    #[serde(skip)]
     pub unrecognised: Vec<i64>,
     pub empty_slots: Vec<Slot>,
 }

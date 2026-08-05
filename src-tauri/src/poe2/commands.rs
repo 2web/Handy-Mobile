@@ -267,6 +267,15 @@ pub fn change_poe2_clipboard_watch_setting(app: AppHandle, enabled: bool) -> Res
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum EquipmentItemStatus {
+    Worn,
+    Superseded,
+    Unrecognised,
+    Excluded,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct EquipmentItem {
     pub id: i64,
@@ -275,8 +284,7 @@ pub struct EquipmentItem {
     pub item_class: Option<String>,
     pub slot: Option<Slot>,
     pub excluded: bool,
-    /// "worn" | "superseded" | "unrecognised" | "excluded"
-    pub status: String,
+    pub status: EquipmentItemStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -302,13 +310,20 @@ pub fn poe2_equipment(app: AppHandle) -> Result<EquipmentView, String> {
             let is_excluded = excluded.contains(&item.id);
             let slot = worn.get(&item.id).copied();
             let status = if is_excluded {
-                "excluded"
+                EquipmentItemStatus::Excluded
             } else if slot.is_some() {
-                "worn"
+                EquipmentItemStatus::Worn
             } else if summary.unrecognised.contains(&item.id) {
-                "unrecognised"
+                EquipmentItemStatus::Unrecognised
+            } else if summary.superseded.contains(&item.id) {
+                EquipmentItemStatus::Superseded
             } else {
-                "superseded"
+                // `infer_worn` sorts every non-excluded item into worn, superseded,
+                // or unrecognised, so this is unreachable today. An explicit
+                // membership test for `superseded` above (rather than a bare
+                // `else`) means a future fourth bucket fails loudly here instead
+                // of being silently mislabelled as superseded.
+                unreachable!("item {} is excluded, worn, unrecognised, and superseded by none of the buckets infer_worn produces", item.id)
             };
             EquipmentItem {
                 id: item.id,
@@ -317,7 +332,7 @@ pub fn poe2_equipment(app: AppHandle) -> Result<EquipmentView, String> {
                 item_class: item.item_class.clone(),
                 slot,
                 excluded: is_excluded,
-                status: status.to_string(),
+                status,
             }
         })
         .collect();
