@@ -84,6 +84,7 @@
       "penaltyLabel": "Штраф",
       "penaltySave": "Сохранить",
       "penaltyClear": "Сбросить",
+      "penaltyInvalid": "Введите число от 0 до 100.",
       "gapsTitle": "Откуда взять недостающее",
       "emptySlots": "Ничего не скопировано: {{slots}}",
       "givesNothing": "Надето, но не даёт этого: {{slots}}",

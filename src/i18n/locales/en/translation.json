@@ -84,6 +84,7 @@
       "penaltyLabel": "Penalty",
       "penaltySave": "Save",
       "penaltyClear": "Clear",
+      "penaltyInvalid": "Enter a number between 0 and 100.",
       "gapsTitle": "Where the missing points could come from",
       "emptySlots": "Nothing captured for: {{slots}}",
       "givesNothing": "Worn but giving nothing to this: {{slots}}",

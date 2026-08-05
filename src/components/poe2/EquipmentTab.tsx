@@ -7,6 +7,7 @@ export const EquipmentTab: React.FC = () => {
   const { t } = useTranslation();
   const [view, setView] = useState<EquipmentView | null>(null);
   const [penaltyDraft, setPenaltyDraft] = useState("");
+  const [penaltyError, setPenaltyError] = useState(false);
 
   const load = useCallback(async () => {
     const result = await commands.poe2Equipment();
@@ -25,13 +26,20 @@ export const EquipmentTab: React.FC = () => {
   }, [load]);
 
   const savePenalty = useCallback(async () => {
-    const parsed = Number(penaltyDraft.replace(",", "."));
-    if (!Number.isFinite(parsed)) return;
+    const trimmed = penaltyDraft.trim();
+    if (trimmed === "") return;
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      setPenaltyError(true);
+      return;
+    }
+    setPenaltyError(false);
     await commands.changePoe2ResistancePenaltySetting(parsed);
     await load();
   }, [penaltyDraft, load]);
 
   const clearPenalty = useCallback(async () => {
+    setPenaltyError(false);
     await commands.changePoe2ResistancePenaltySetting(null);
     await load();
   }, [load]);
@@ -51,6 +59,14 @@ export const EquipmentTab: React.FC = () => {
   }
 
   const slotName = (slot: string) => t(`poe2.equipment.slot.${slot}`);
+
+  const statusLabels: Record<string, string> = {
+    worn: t("poe2.equipment.statusWorn"),
+    superseded: t("poe2.equipment.statusSuperseded"),
+    unrecognised: t("poe2.equipment.statusUnrecognised"),
+    excluded: t("poe2.equipment.statusExcluded"),
+  };
+  const statusLabel = (status: string) => statusLabels[status] ?? status;
 
   return (
     <div className="p-4 space-y-4">
@@ -85,8 +101,24 @@ export const EquipmentTab: React.FC = () => {
                   </span>
                 )}
               </div>
-              {(l.missing_from.length > 0 || l.empty_slots.length > 0) && (
-                <div className="mt-1 text-sm opacity-70">
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {view.summary.lines.some(
+        (l) => l.missing_from.length > 0 || l.empty_slots.length > 0,
+      ) && (
+        <section>
+          <p className="font-medium">{t("poe2.equipment.gapsTitle")}</p>
+          <ul className="mt-2 list-none p-0">
+            {view.summary.lines
+              .filter((l) => l.missing_from.length > 0 || l.empty_slots.length > 0)
+              .map((l) => (
+                <li key={l.element} className="border-t border-mid-gray/30 py-2 text-sm opacity-70">
+                  <span className="font-medium opacity-100">
+                    {t(`poe2.equipment.element.${l.element}`)}
+                  </span>
                   {l.empty_slots.length > 0 && (
                     <p>
                       {t("poe2.equipment.emptySlots", {
@@ -101,12 +133,11 @@ export const EquipmentTab: React.FC = () => {
                       })}
                     </p>
                   )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       <section className="rounded-md border border-mid-gray/30 p-3">
         <p className="font-medium">{t("poe2.equipment.penaltyTitle")}</p>
@@ -125,6 +156,9 @@ export const EquipmentTab: React.FC = () => {
           <Button onClick={savePenalty}>{t("poe2.equipment.penaltySave")}</Button>
           <Button onClick={clearPenalty}>{t("poe2.equipment.penaltyClear")}</Button>
         </div>
+        {penaltyError && (
+          <p className="mt-2 text-sm text-red-400">{t("poe2.equipment.penaltyInvalid")}</p>
+        )}
       </section>
 
       <section>
@@ -139,11 +173,7 @@ export const EquipmentTab: React.FC = () => {
               <span className="text-sm opacity-60">
                 {item.slot ? slotName(item.slot) : (item.item_class ?? "")}
               </span>
-              <span className="text-sm opacity-60">
-                {t(
-                  `poe2.equipment.status${item.status.charAt(0).toUpperCase()}${item.status.slice(1)}`,
-                )}
-              </span>
+              <span className="text-sm opacity-60">{statusLabel(item.status)}</span>
               <button
                 type="button"
                 className="text-sm underline opacity-70"
