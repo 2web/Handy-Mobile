@@ -911,6 +911,36 @@ async changePoe2ClipboardWatchSetting(enabled: boolean) : Promise<Result<null, s
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async poe2State() : Promise<Result<ProgressSnapshot, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("poe2_state") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Replays the stored events to rebuild `zones` and `characters`.
+ * 
+ * The event log itself is never touched. This exists so a fix to the zone
+ * pairing rules can be applied to history that is already ingested.
+ */
+async poe2RebuildDerived() : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("poe2_rebuild_derived") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePoe2LogPathSetting(path: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_poe2_log_path_setting", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -965,7 +995,7 @@ whats_new_last_seen_version?: string; selected_model?: string; onboarding_comple
  * not gated on this — that follows model capability. Migrated from the old
  * `overlay_position` (position `none` → style `None`).
  */
-overlay_style?: OverlayStyle; poe2_enabled?: boolean; poe2_clipboard_watch?: boolean }
+overlay_style?: OverlayStyle; poe2_enabled?: boolean; poe2_clipboard_watch?: boolean; poe2_log_path?: string | null }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { transcribe: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
@@ -1033,6 +1063,20 @@ export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
+/**
+ * What the Progress tab needs, flattened.
+ * 
+ * `TrackerState` itself does not cross this boundary: its timestamps are
+ * `NaiveDateTime`, which specta cannot describe without its chrono feature. The
+ * two timestamps the interface actually shows are rendered as ISO strings here.
+ */
+export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; last_ts: string | null; focused: boolean; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null; 
+/**
+ * The current zone's act, which is more trustworthy than the last act seen:
+ * a global "last act" never resets and would show an act finished hours ago
+ * once the player reaches the endgame or a hideout.
+ */
+act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number }
 export type RebuildResult = { reparsed: number; failed: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type SecretMap = Partial<{ [key in string]: string }>

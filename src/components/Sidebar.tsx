@@ -12,7 +12,7 @@ import {
 import HandyTextLogo from "./icons/HandyTextLogo";
 import HandyHand from "./icons/HandyHand";
 import { useSettings } from "../hooks/useSettings";
-import { ItemsPage } from "./poe2/ItemsPage";
+import { Poe2Page } from "./poe2/Poe2Page";
 import {
   GeneralSettings,
   AdvancedSettings,
@@ -56,7 +56,7 @@ export const SECTIONS_CONFIG = {
   poe2: {
     labelKey: "sidebar.poe2",
     icon: Swords,
-    component: ItemsPage,
+    component: Poe2Page,
     enabled: (settings) => settings?.poe2_enabled ?? false,
   },
   models: {

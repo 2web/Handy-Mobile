@@ -169,6 +169,8 @@ const settingUpdaters: {
   poe2_enabled: (value) => commands.changePoe2EnabledSetting(value as boolean),
   poe2_clipboard_watch: (value) =>
     commands.changePoe2ClipboardWatchSetting(value as boolean),
+  poe2_log_path: (value) =>
+    commands.changePoe2LogPathSetting(value as string | null),
 };
 
 export const useSettingsStore = create<SettingsStore>()(

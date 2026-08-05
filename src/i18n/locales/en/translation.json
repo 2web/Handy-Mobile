@@ -37,6 +37,37 @@
       "rune": "rune",
       "itemLevel": "ilvl {{level}}",
       "simpleFormat": "Advanced item descriptions are off in the game — tiers and roll ranges are unavailable."
+    },
+    "tabs": {
+      "progress": "Progress",
+      "items": "Items"
+    },
+    "progress": {
+      "noCharacter": "No character identified yet",
+      "confirmed": "character confirmed {{when}}",
+      "unconfirmed": "no event has named a character yet",
+      "level": "Level",
+      "act": "Act",
+      "zoneLevel": "Zone level",
+      "inZone": "In zone",
+      "zone": "Current zone",
+      "gap": "Character level against zone level",
+      "gapUnknown": "needs both a character level and a zone level",
+      "gapBehind": "noticeably below the zone — worth levelling up",
+      "gapSlightly": "slightly behind",
+      "gapFine": "level is fine",
+      "rewards": "Quest rewards",
+      "noRewards": "no rewards yet",
+      "importing": "Reading the game log for the first time — this takes a moment.",
+      "noLog": "Game log not found at {{path}}",
+      "noDebug": "The game log has no DEBUG lines, so zone changes are not tracked.",
+      "logPath": "Game log",
+      "choose": "Choose file…",
+      "reset": "Use the default path",
+      "rebuild": "Rebuild zones and characters",
+      "rebuilt": "Replayed {{count}} events.",
+      "rebuildError": "Could not rebuild from the event log.",
+      "events": "{{count}} events stored"
     }
   },
   "onboarding": {
