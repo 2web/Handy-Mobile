@@ -1,0 +1,12 @@
+2026/08/02 12:05:17 9674984 3ef231e0 [INFO Client 42864] : Kasablankee (Disciple of Varashta) is now level 61
+2026/08/02 17:43:48 29985703 2caa2332 [DEBUG Client 23396] Generating level 59 area "P2_2" with seed 2251200547
+2026/07/12 17:33:58 549544640 3ef231e0 [INFO Client 34520] : Kasablankee has received +10% to [Resistances|Cold Resistance].
+2026/07/17 08:07:36 116035906 3ef231e0 [INFO Client 25780] : Kasablankee has received +1 [Charm] Slot.
+2026/08/03 22:06:31 132140562 7fbd1225 [INFO Client 706388] [SCENE] Set Source [(null)]
+2026/08/03 21:50:15 131165015 2caa2332 [INFO Client 706388] [SCENE] Set Source [Clearfell Encampment]
+2026/08/03 22:08:04 132233359 5288531e [INFO Client 706388] [WINDOW] Gained focus
+2026/08/03 21:00:00 131000000 5288531e [INFO Client 706388] [WINDOW] Lost focus
+2026/08/03 22:06:31 132140546 2d8e8dd7 [INFO Client 706388] Abnormal disconnect: An unexpected disconnection occurred.
+2026/07/12 13:51:02 536168359 3ef231e0 [INFO Client 55192] : MaruniaKazaMorta has been slain.
+2026/08/03 22:00:41 131790703 3ef231e0 [INFO Client 706388] #GorillaGripMyBussy: Kasablankee has received +30 to [Spirit|Spirit].
+2026/08/03 22:00:38 131787843 3ef231e0 [INFO Client 706388] [SOUND] Device List changed...

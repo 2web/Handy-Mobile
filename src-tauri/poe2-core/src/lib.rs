@@ -8,6 +8,7 @@
 
 pub mod clipboard_watch;
 pub mod items;
+pub mod log;
 pub mod store;
 
 #[cfg(test)]
