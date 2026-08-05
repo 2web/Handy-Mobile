@@ -5,3 +5,4 @@
 
 pub mod resistances;
 pub mod slots;
+pub mod summary;
