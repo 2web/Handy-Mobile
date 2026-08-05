@@ -339,6 +339,26 @@ impl Poe2Store {
         Ok(items)
     }
 
+    /// Every stored item, oldest first.
+    ///
+    /// `items(limit)` exists for the list view and caps at fifty; the calculator
+    /// must see everything, or a player with more captures than that would lose
+    /// gear from the totals with no sign of it.
+    pub fn all_items(&self) -> Result<Vec<StoredItem>> {
+        let mut stmt = self.conn.prepare("SELECT id FROM items ORDER BY id")?;
+        let ids = stmt
+            .query_map([], |row| row.get::<_, i64>(0))?
+            .collect::<rusqlite::Result<Vec<i64>>>()?;
+
+        let mut items = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(item) = self.item(id)? {
+                items.push(item);
+            }
+        }
+        Ok(items)
+    }
+
     pub fn item(&self, id: i64) -> Result<Option<StoredItem>> {
         let row = self
             .conn
@@ -783,6 +803,19 @@ mod tests {
     #[test]
     fn unknown_item_id_gives_none() {
         assert!(store().item(999).unwrap().is_none());
+    }
+
+    #[test]
+    fn all_items_is_not_capped_like_the_list_view() {
+        let mut s = store();
+        let parsed = parse_item(SCEPTRE).unwrap();
+        s.add_item(&parsed, "paste", Utc::now()).unwrap();
+        // A second, different item so the ids differ.
+        let other = parse_item(&SCEPTRE.replace("Wrath Call", "Second Item")).unwrap();
+        s.add_item(&other, "paste", Utc::now()).unwrap();
+
+        assert_eq!(s.all_items().unwrap().len(), 2);
+        assert_eq!(s.items(1).unwrap().len(), 1, "the list view still caps");
     }
 
     /// Deletes a file on drop even if the test panics, so a failed assertion

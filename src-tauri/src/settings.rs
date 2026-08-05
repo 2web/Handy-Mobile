@@ -472,6 +472,15 @@ pub struct AppSettings {
     pub poe2_clipboard_watch: bool,
     #[serde(default)]
     pub poe2_log_path: Option<String>,
+    /// The campaign's resistance penalty, as the player reads it off their own
+    /// character panel. Unset means the calculator shows the gear contribution
+    /// and withholds any comparison to the cap — a wrong number in the
+    /// reassuring direction is worse than none.
+    #[serde(default)]
+    pub poe2_resistance_penalty: Option<f64>,
+    /// Items the player has excluded from the calculation.
+    #[serde(default)]
+    pub poe2_excluded_items: Vec<i64>,
 }
 
 fn default_model() -> String {
@@ -962,6 +971,8 @@ pub fn get_default_settings() -> AppSettings {
         poe2_enabled: false,
         poe2_clipboard_watch: false,
         poe2_log_path: None,
+        poe2_resistance_penalty: None,
+        poe2_excluded_items: Vec::new(),
     }
 }
 

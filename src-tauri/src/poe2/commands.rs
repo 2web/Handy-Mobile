@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
 
+use poe2_core::gear::slots::Slot;
+use poe2_core::gear::summary::{summarise, EquipmentSummary};
 use poe2_core::items::parse_item;
 use poe2_core::log::state::{build_state, level_gap};
 use poe2_core::store::{Poe2Store, StoredItem, ZoneRow};
@@ -262,5 +264,90 @@ pub fn change_poe2_clipboard_watch_setting(app: AppHandle, enabled: bool) -> Res
         // running.
         crate::poe2::watcher::spawn(app);
     }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EquipmentItem {
+    pub id: i64,
+    pub name: Option<String>,
+    pub base_type: Option<String>,
+    pub item_class: Option<String>,
+    pub slot: Option<Slot>,
+    pub excluded: bool,
+    /// "worn" | "superseded" | "unrecognised" | "excluded"
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EquipmentView {
+    pub summary: EquipmentSummary,
+    pub items: Vec<EquipmentItem>,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn poe2_equipment(app: AppHandle) -> Result<EquipmentView, String> {
+    let settings = settings::get_settings(&app);
+    let excluded = settings.poe2_excluded_items.clone();
+
+    let store = store_for(&app)?;
+    let items = store.all_items().map_err(|e| e.to_string())?;
+    let summary = summarise(&items, &excluded, settings.poe2_resistance_penalty);
+
+    let worn: std::collections::BTreeMap<i64, Slot> = summary.worn.iter().copied().collect();
+    let view_items = items
+        .iter()
+        .map(|item| {
+            let is_excluded = excluded.contains(&item.id);
+            let slot = worn.get(&item.id).copied();
+            let status = if is_excluded {
+                "excluded"
+            } else if slot.is_some() {
+                "worn"
+            } else if summary.unrecognised.contains(&item.id) {
+                "unrecognised"
+            } else {
+                "superseded"
+            };
+            EquipmentItem {
+                id: item.id,
+                name: item.name.clone(),
+                base_type: item.base_type.clone(),
+                item_class: item.item_class.clone(),
+                slot,
+                excluded: is_excluded,
+                status: status.to_string(),
+            }
+        })
+        .collect();
+
+    Ok(EquipmentView {
+        summary,
+        items: view_items,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn poe2_set_item_excluded(app: AppHandle, item_id: i64, excluded: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.poe2_excluded_items.retain(|id| *id != item_id);
+    if excluded {
+        settings.poe2_excluded_items.push(item_id);
+    }
+    settings::write_settings(&app, settings.clone());
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_poe2_resistance_penalty_setting(
+    app: AppHandle,
+    penalty: Option<f64>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.poe2_resistance_penalty = penalty;
+    settings::write_settings(&app, settings.clone());
     Ok(())
 }

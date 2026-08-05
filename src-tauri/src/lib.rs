@@ -763,6 +763,9 @@ pub fn run(cli_args: CliArgs) {
             poe2::commands::poe2_state,
             poe2::commands::poe2_rebuild_derived,
             poe2::commands::change_poe2_log_path_setting,
+            poe2::commands::poe2_equipment,
+            poe2::commands::poe2_set_item_excluded,
+            poe2::commands::change_poe2_resistance_penalty_setting,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,
