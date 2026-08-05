@@ -1,9 +1,18 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cpu } from "lucide-react";
+import {
+  Cog,
+  FlaskConical,
+  History,
+  Info,
+  Sparkles,
+  Cpu,
+  Swords,
+} from "lucide-react";
 import HandyTextLogo from "./icons/HandyTextLogo";
 import HandyHand from "./icons/HandyHand";
 import { useSettings } from "../hooks/useSettings";
+import { ItemsPage } from "./poe2/ItemsPage";
 import {
   GeneralSettings,
   AdvancedSettings,
@@ -43,6 +52,12 @@ export const SECTIONS_CONFIG = {
     icon: History,
     component: HistorySettings,
     enabled: () => true,
+  },
+  poe2: {
+    labelKey: "sidebar.poe2",
+    icon: Swords,
+    component: ItemsPage,
+    enabled: (settings) => settings?.poe2_enabled ?? false,
   },
   models: {
     labelKey: "sidebar.models",

@@ -17,8 +17,25 @@
     "advanced": "Advanced",
     "postProcessing": "Post Process",
     "history": "History",
+    "poe2": "Path of Exile 2",
     "debug": "Debug",
     "about": "About"
+  },
+  "poe2": {
+    "items": {
+      "title": "Items",
+      "placeholder": "Hover an item in the game, press Ctrl+C, then paste it here with Ctrl+V",
+      "saved": "Item saved.",
+      "duplicate": "This item is already saved.",
+      "failed": "Could not parse the item.",
+      "empty": "No items captured yet.",
+      "rebuild": "Reparse stored items",
+      "rebuilt": "Reparsed {{count}} items.",
+      "rebuildFailed": "{{count}} could not be parsed and were left as they were.",
+      "rune": "rune",
+      "itemLevel": "ilvl {{level}}",
+      "simpleFormat": "Advanced item descriptions are off in the game — tiers and roll ranges are unavailable."
+    }
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",
@@ -257,6 +274,14 @@
       "experimentalToggle": {
         "label": "Experimental Features",
         "description": "Enable experimental features that are still in development."
+      },
+      "poe2": {
+        "label": "Path of Exile 2 tools",
+        "description": "Show a section for capturing items copied from the game."
+      },
+      "poe2Clipboard": {
+        "label": "Watch the clipboard for items",
+        "description": "Reads the clipboard once a second and parses only text starting with Item Class. Nothing is ever written to the clipboard and nothing leaves your computer."
       },
       "lazyStreamClose": {
         "label": "Keep Mic Open Between Transcriptions",

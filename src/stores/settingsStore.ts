@@ -166,6 +166,9 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as number),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
+  poe2_enabled: (value) => commands.changePoe2EnabledSetting(value as boolean),
+  poe2_clipboard_watch: (value) =>
+    commands.changePoe2ClipboardWatchSetting(value as boolean),
 };
 
 export const useSettingsStore = create<SettingsStore>()(
