@@ -35,6 +35,10 @@ static RANGE_VALUE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(-?\d+(?:\.\d+)?)\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)").unwrap());
 static PLAIN_VALUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"[-+]?\d+(?:\.\d+)?").unwrap());
 
+// "+18% to Fire Resistance (rune)" — an inserted rune, not an affix of the item.
+static SOURCE_SUFFIX_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\s*\((rune|implicit|crafted|enchant)\)\s*$").unwrap());
+
 // { Crafted Suffix Modifier "of the Stars" (Tier: 4) — Minion, Gem }
 // The kind group absorbs every leading word, not just one: real headers can read
 // "Fractured Prefix Modifier" or "Desecrated Suffix Modifier", where only the
@@ -408,6 +412,32 @@ fn flush_mod(
     });
 }
 
+/// A section with no braces: runes and simple-format modifiers.
+///
+/// In the simple format (advanced descriptions off in the game) only the text is
+/// known — no kind, name, tier, or range. Parsing does not fail; it simply
+/// extracts less.
+pub fn parse_plain_mods(lines: &[String]) -> Vec<ItemMod> {
+    lines
+        .iter()
+        .map(|line| {
+            let kind = SOURCE_SUFFIX_RE
+                .captures(line)
+                .map(|caps| ModKind::from_str_or_unknown(&caps[1]))
+                .unwrap_or(ModKind::Unknown);
+            let text = SOURCE_SUFFIX_RE.replace(line, "").to_string();
+            let values = parse_values(&text);
+            ItemMod {
+                kind,
+                name: None,
+                tier: None,
+                tags: Vec::new(),
+                effects: vec![ModEffect { text, values }],
+            }
+        })
+        .collect()
+}
+
 /// Item text -> structure. Returns `NotAnItem` when the text is not an item.
 pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
     if !looks_like_item(text) {
@@ -445,8 +475,9 @@ pub fn parse_item(text: &str) -> Result<ParsedItem, NotAnItem> {
         let pairs: Vec<Option<(String, String)>> =
             section.iter().map(|line| key_value(line)).collect();
         if pairs.iter().any(Option::is_none) {
-            // Not key-value pairs: modifiers or something unfamiliar. Both are
-            // handled separately (tasks 2 and 3).
+            // Not key-value pairs, so runes or simple-format modifiers. The
+            // unknown is kept, not discarded.
+            item.mods.extend(parse_plain_mods(section));
             continue;
         }
         for (key, value) in pairs.into_iter().flatten() {
@@ -864,6 +895,91 @@ mod tests {
                     value_max: Some(23.0)
                 },
             ]
+        );
+    }
+
+    const SIMPLE_FORMAT: &str = "Item Class: Sceptres\nRarity: Rare\nWrath Call\n\
+                                 Rattling Sceptre\n--------\nRequires: Level 44\n\
+                                 --------\nItem Level: 58\n--------\n\
+                                 50% increased Spirit\n+22 to maximum Mana\n";
+
+    #[test]
+    fn runes_are_kept_as_mods() {
+        let item = parse_item(BODY_ARMOUR).unwrap();
+        let runes: Vec<&ItemMod> = item
+            .mods
+            .iter()
+            .filter(|m| m.kind == ModKind::Rune)
+            .collect();
+        assert_eq!(runes.len(), 2);
+        assert_eq!(runes[0].text(), "+5% to all Elemental Resistances");
+        assert_eq!(
+            runes[1].effects[0].values,
+            vec![ModValue {
+                value: 18.0,
+                value_min: None,
+                value_max: None
+            }]
+        );
+    }
+
+    #[test]
+    fn runes_do_not_become_item_affixes() {
+        // A rune is an insert, not an affix: it has neither tier nor name.
+        let item = parse_item(BODY_ARMOUR).unwrap();
+        let rune = item.mods.iter().find(|m| m.kind == ModKind::Rune).unwrap();
+        assert_eq!(rune.tier, None);
+        assert_eq!(rune.name, None);
+    }
+
+    #[test]
+    fn armour_has_three_affixes_besides_runes() {
+        let item = parse_item(BODY_ARMOUR).unwrap();
+        let kinds: Vec<ModKind> = item
+            .mods
+            .iter()
+            .filter(|m| m.kind != ModKind::Rune)
+            .map(|m| m.kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![ModKind::Prefix, ModKind::Prefix, ModKind::Suffix]
+        );
+    }
+
+    #[test]
+    fn simple_format_parses_without_crashing() {
+        let item = parse_item(SIMPLE_FORMAT).unwrap();
+        assert!(!item.advanced);
+        assert_eq!(item.item_level, Some(58));
+        let kinds: Vec<ModKind> = item.mods.iter().map(|m| m.kind).collect();
+        assert_eq!(kinds, vec![ModKind::Unknown, ModKind::Unknown]);
+    }
+
+    #[test]
+    fn simple_format_still_extracts_values() {
+        let item = parse_item(SIMPLE_FORMAT).unwrap();
+        assert_eq!(
+            item.mods[0].effects[0].values,
+            vec![ModValue {
+                value: 50.0,
+                value_min: None,
+                value_max: None
+            }]
+        );
+        assert_eq!(item.mods[0].name, None);
+    }
+
+    #[test]
+    fn unknown_modifier_is_kept_as_text() {
+        let text = "Item Class: Sceptres\nRarity: Rare\nWrath Call\nRattling Sceptre\n\
+                    --------\n{ Peculiar Modifier of an unknown shape }\n\
+                    A brand new effect with no numbers\n";
+        let item = parse_item(text).unwrap();
+        assert_eq!(item.mods[0].kind, ModKind::Unknown);
+        assert_eq!(
+            item.mods[0].effects[0].text,
+            "A brand new effect with no numbers"
         );
     }
 }
