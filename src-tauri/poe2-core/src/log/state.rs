@@ -57,36 +57,45 @@ pub fn reduce(state: TrackerState, event: &Event) -> TrackerState {
 
     match event.kind {
         EventKind::LevelUp => {
-            let name = event.payload["character"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            let ascendancy = event.payload["ascendancy"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            next.known_characters
-                .insert(name.clone(), ascendancy.clone());
-            switch_character(&mut next, &name);
-            next.character = Some(name);
-            next.ascendancy = Some(ascendancy);
-            next.level = event.payload["level"].as_i64();
-            next.character_confirmed_ts = Some(event.ts);
+            // An event with no (string) character name carries no information
+            // about who is playing. Treating it as a switch to a character
+            // named "" would displace whoever is actually active.
+            if let Some(name) = event.payload["character"].as_str() {
+                let name = name.to_string();
+                let ascendancy = event.payload["ascendancy"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                switch_character(&mut next, &name);
+                next.character = Some(name.clone());
+                // Authoritative for this arm: the level-up payload always
+                // carries the character's current ascendancy, so it wins over
+                // whatever switch_character looked up in known_characters.
+                // That lookup only matters on the QuestReward path below,
+                // where no ascendancy is carried in the payload.
+                next.ascendancy = Some(ascendancy.clone());
+                // A malformed level must not wipe a level that was already
+                // known, whether or not the character changed.
+                if let Some(level) = event.payload["level"].as_i64() {
+                    next.level = Some(level);
+                }
+                next.character_confirmed_ts = Some(event.ts);
+                next.known_characters.insert(name, ascendancy);
+            }
         }
         EventKind::QuestReward => {
-            let name = event.payload["character"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string();
-            switch_character(&mut next, &name);
-            if let Some(reward) = event.payload["reward"].as_str() {
-                next.rewards
-                    .entry(name.clone())
-                    .or_default()
-                    .push(reward.to_string());
+            if let Some(name) = event.payload["character"].as_str() {
+                let name = name.to_string();
+                switch_character(&mut next, &name);
+                if let Some(reward) = event.payload["reward"].as_str() {
+                    next.rewards
+                        .entry(name.clone())
+                        .or_default()
+                        .push(reward.to_string());
+                }
+                next.character = Some(name);
+                next.character_confirmed_ts = Some(event.ts);
             }
-            next.character = Some(name);
-            next.character_confirmed_ts = Some(event.ts);
         }
         EventKind::AreaEntered => {
             next.zone_code = event.payload["code"].as_str().map(str::to_string);
@@ -279,6 +288,54 @@ mod tests {
             ev(9, EventKind::Disconnect, json!({})),
         ]);
         assert_eq!(s.last_ts, Some(at(9)));
+    }
+
+    #[test]
+    fn level_up_with_no_character_leaves_the_active_character_untouched() {
+        let events = vec![
+            level_up(1, "Hero", 12),
+            ev(
+                2,
+                EventKind::LevelUp,
+                json!({"ascendancy": "Witch", "level": 99}),
+            ),
+        ];
+        let s = build_state(&events);
+        assert_eq!(s.character.as_deref(), Some("Hero"));
+        assert_eq!(s.level, Some(12));
+        assert_eq!(s.character_confirmed_ts, Some(at(1)));
+    }
+
+    #[test]
+    fn quest_reward_with_no_character_leaves_the_active_character_untouched() {
+        let events = vec![
+            level_up(1, "Hero", 12),
+            ev(
+                2,
+                EventKind::QuestReward,
+                json!({"reward": "+1 Charm Slot"}),
+            ),
+        ];
+        let s = build_state(&events);
+        assert_eq!(s.character.as_deref(), Some("Hero"));
+        assert_eq!(s.level, Some(12));
+        assert_eq!(s.character_confirmed_ts, Some(at(1)));
+        assert!(s.rewards.is_empty());
+    }
+
+    #[test]
+    fn malformed_level_leaves_the_previous_level_in_place() {
+        let events = vec![
+            level_up(1, "Hero", 12),
+            ev(
+                2,
+                EventKind::LevelUp,
+                json!({"character": "Hero", "ascendancy": "Sorceress", "level": "not-a-number"}),
+            ),
+        ];
+        let s = build_state(&events);
+        assert_eq!(s.character.as_deref(), Some("Hero"));
+        assert_eq!(s.level, Some(12));
     }
 
     #[test]
