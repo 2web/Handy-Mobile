@@ -16,6 +16,12 @@ pub struct AddItemResult {
     pub item: Option<StoredItem>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct RebuildResult {
+    pub reparsed: u32,
+    pub failed: u32,
+}
+
 /// Opens the item database. A fresh connection per call: opening a SQLite file
 /// is cheap, and a per-call connection keeps the commands free of shared state.
 pub fn store_for(app: &AppHandle) -> Result<Poe2Store, String> {
@@ -51,18 +57,28 @@ pub fn poe2_list_items(app: AppHandle) -> Result<Vec<StoredItem>, String> {
 /// re-pasting.
 #[tauri::command]
 #[specta::specta]
-pub fn poe2_rebuild_items(app: AppHandle) -> Result<u32, String> {
+pub fn poe2_rebuild_items(app: AppHandle) -> Result<RebuildResult, String> {
     let mut store = store_for(&app)?;
-    let mut count = 0u32;
+    let mut reparsed = 0u32;
+    let mut failed = 0u32;
     for (id, raw_text) in store.raw_items().map_err(|e| e.to_string())? {
         // A record that no longer parses must not abort the rebuild of all the
-        // others.
-        if let Ok(parsed) = parse_item(&raw_text) {
-            store.reparse_item(id, &parsed).map_err(|e| e.to_string())?;
-            count += 1;
+        // others, but it also must not vanish silently: a raw text that stops
+        // parsing means either the parser regressed or the row is corrupt, and
+        // both are worth knowing about. Never log the raw text itself — it is
+        // player data and the log is a file on disk.
+        match parse_item(&raw_text) {
+            Ok(parsed) => {
+                store.reparse_item(id, &parsed).map_err(|e| e.to_string())?;
+                reparsed += 1;
+            }
+            Err(_) => {
+                log::warn!("poe2_rebuild_items: item {id} no longer parses, skipping");
+                failed += 1;
+            }
         }
     }
-    Ok(count)
+    Ok(RebuildResult { reparsed, failed })
 }
 
 #[tauri::command]

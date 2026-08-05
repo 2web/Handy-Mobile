@@ -106,6 +106,14 @@ impl Poe2Store {
     }
 
     fn from_connection(mut conn: Connection) -> Result<Poe2Store> {
+        // A background clipboard watcher and a command handler can both open a
+        // connection to this file and write at the same time. Without a busy
+        // timeout, the connection that loses the race to SQLite's write lock
+        // fails immediately with SQLITE_BUSY instead of waiting — turning a
+        // momentary overlap into a lost item. Five seconds is far longer than
+        // any write here takes.
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
+
         let migrations = Migrations::new(MIGRATIONS.iter().map(|sql| M::up(sql)).collect());
         migrations.to_latest(&mut conn)?;
         Ok(Poe2Store { conn })
