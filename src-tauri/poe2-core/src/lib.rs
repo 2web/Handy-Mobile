@@ -6,5 +6,6 @@
 //! the "no I/O in the parser" rule the design asks for is enforced by the crate
 //! boundary rather than by discipline.
 
+pub mod clipboard_watch;
 pub mod items;
 pub mod store;

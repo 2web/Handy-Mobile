@@ -998,6 +998,8 @@ pub fn run(cli_args: CliArgs) {
                 show_main_window(&app_handle);
             }
 
+            crate::poe2::watcher::spawn(app.handle().clone());
+
             Ok(())
         })
         .on_window_event(|window, event| match event {
