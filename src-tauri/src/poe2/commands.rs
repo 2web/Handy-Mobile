@@ -102,8 +102,6 @@ pub struct ProgressSnapshot {
     pub zone_name: Option<String>,
     pub zone_level: Option<i64>,
     pub character_confirmed_ts: Option<String>,
-    pub last_ts: Option<String>,
-    pub focused: bool,
     pub rewards: Vec<String>,
     pub level_gap: Option<i64>,
     pub seconds_in_zone: Option<i64>,
@@ -115,6 +113,11 @@ pub struct ProgressSnapshot {
     pub debug_lines: bool,
     pub importing: bool,
     pub event_count: i64,
+    /// The path actually resolved and polled — the setting, or the default
+    /// if unset. Distinct from the `poe2_log_path` setting, which is `null`
+    /// by default: when the log cannot be found, this is the one thing the
+    /// player needs to see.
+    pub log_path: String,
 }
 
 #[tauri::command]
@@ -149,18 +152,19 @@ pub fn poe2_state(app: AppHandle) -> Result<ProgressSnapshot, String> {
         zone_name: zone.and_then(|z| z.name.clone()),
         zone_level: state.zone_level,
         character_confirmed_ts: state.character_confirmed_ts.map(|t| t.to_string()),
-        last_ts: state.last_ts.map(|t| t.to_string()),
-        focused: state.focused,
         rewards,
         level_gap: level_gap(&state),
         seconds_in_zone,
-        act: zone
-            .and_then(|z| z.act.clone())
-            .or_else(|| state.act.clone()),
+        // No fallback to the last act seen anywhere: that is a global value
+        // that never resets, and would show an act finished hours ago once
+        // the player reaches a hideout or the endgame. Honest absence beats
+        // a confident wrong answer.
+        act: zone.and_then(|z| z.act.clone()),
         log_present: path.exists(),
-        debug_lines: crate::poe2::tracker::has_debug_lines(&path),
+        debug_lines: crate::poe2::tracker::has_debug_lines_cached(&path),
         importing: crate::poe2::tracker::IMPORTING.load(std::sync::atomic::Ordering::SeqCst),
         event_count: events.len() as i64,
+        log_path: path.display().to_string(),
     })
 }
 
@@ -168,6 +172,15 @@ pub fn poe2_state(app: AppHandle) -> Result<ProgressSnapshot, String> {
 ///
 /// The event log itself is never touched. This exists so a fix to the zone
 /// pairing rules can be applied to history that is already ingested.
+///
+/// The replay is assembled into one `IngestBatch` and written through
+/// `ingest_batch`, the same batched-transaction path `poll_once` uses,
+/// rather than one transaction per zone update and character upsert: with
+/// thousands of events that was thousands of fsyncs, long enough to hold the
+/// database busy past the tracker thread's 5-second `busy_timeout`, and a
+/// failure partway through left `zones` and `characters` half-rebuilt with
+/// no rollback. `events` is left empty — the events already exist and must
+/// not be re-inserted.
 #[tauri::command]
 #[specta::specta]
 pub fn poe2_rebuild_derived(app: AppHandle) -> Result<u32, String> {
@@ -176,34 +189,36 @@ pub fn poe2_rebuild_derived(app: AppHandle) -> Result<u32, String> {
     store.clear_derived().map_err(|e| e.to_string())?;
 
     let mut zones = poe2_core::log::zones::ZoneResolver::new();
+    let mut batch = poe2_core::store::IngestBatch {
+        events: Vec::new(),
+        generation: 0,
+        zones: Vec::new(),
+        characters: Vec::new(),
+        meta: Vec::new(),
+    };
     for event in &events {
-        for update in zones.feed(event) {
-            store
-                .apply_zone_update(&update)
-                .map_err(|e| e.to_string())?;
-        }
+        batch.zones.extend(zones.feed(event));
         match event.kind {
             poe2_core::log::events::EventKind::LevelUp => {
                 if let Some(name) = event.payload["character"].as_str() {
-                    store
-                        .upsert_character(
-                            name,
-                            event.payload["ascendancy"].as_str(),
-                            Some(event.ts),
-                        )
-                        .map_err(|e| e.to_string())?;
+                    batch.characters.push((
+                        name.to_string(),
+                        event.payload["ascendancy"].as_str().map(str::to_string),
+                        Some(event.ts),
+                    ));
                 }
             }
             poe2_core::log::events::EventKind::QuestReward => {
                 if let Some(name) = event.payload["character"].as_str() {
-                    store
-                        .upsert_character(name, None, Some(event.ts))
-                        .map_err(|e| e.to_string())?;
+                    batch
+                        .characters
+                        .push((name.to_string(), None, Some(event.ts)));
                 }
             }
             _ => {}
         }
     }
+    store.ingest_batch(&batch).map_err(|e| e.to_string())?;
     Ok(events.len() as u32)
 }
 

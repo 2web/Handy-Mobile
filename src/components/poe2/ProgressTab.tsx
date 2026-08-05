@@ -23,7 +23,7 @@ function formatDuration(seconds: number | null): string {
 
 export const ProgressTab: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting, updateSetting } = useSettings();
+  const { updateSetting } = useSettings();
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null);
   const [status, setStatus] = useState("");
 
@@ -84,7 +84,6 @@ export const ProgressTab: React.FC = () => {
 
   // Already narrowed to the active character by the backend.
   const rewards = snapshot.rewards;
-  const logPath = (getSetting("poe2_log_path") as string | null) ?? null;
 
   return (
     <div className="p-4 space-y-3">
@@ -93,7 +92,7 @@ export const ProgressTab: React.FC = () => {
       )}
       {!snapshot.log_present && (
         <p className="text-sm opacity-70">
-          {t("poe2.progress.noLog", { path: logPath ?? "" })}
+          {t("poe2.progress.noLog", { path: snapshot.log_path })}
         </p>
       )}
       {snapshot.log_present && !snapshot.debug_lines && (
@@ -160,7 +159,7 @@ export const ProgressTab: React.FC = () => {
 
       <div className="space-y-2">
         <p className="text-sm opacity-60">{t("poe2.progress.logPath")}</p>
-        <p className="text-sm break-all opacity-80">{logPath ?? ""}</p>
+        <p className="text-sm break-all opacity-80">{snapshot.log_path}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={chooseLogPath}>{t("poe2.progress.choose")}</Button>
           <Button onClick={resetLogPath}>{t("poe2.progress.reset")}</Button>

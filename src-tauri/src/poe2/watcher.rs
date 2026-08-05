@@ -75,14 +75,17 @@ pub fn spawn(app: AppHandle) {
                 let Ok(mut store) = crate::poe2::commands::store_for(&store_app) else {
                     return;
                 };
-                if store
-                    .add_item(&parsed, "clipboard", chrono::Utc::now())
-                    .is_ok()
-                {
-                    // Only on a successful store: the page must refetch when a
-                    // capture actually landed, not on a write failure it can't
-                    // do anything about anyway.
-                    let _ = store_app.emit(ITEM_CAPTURED_EVENT, ());
+                match store.add_item(&parsed, "clipboard", chrono::Utc::now()) {
+                    Ok(_) => {
+                        // Only on a successful store: the page must refetch when a
+                        // capture actually landed, not on a write failure it can't
+                        // do anything about anyway.
+                        let _ = store_app.emit(ITEM_CAPTURED_EVENT, ());
+                    }
+                    // Never log the item text itself — it is player data. A
+                    // lost race during the cold import must leave a trace
+                    // instead of silently vanishing.
+                    Err(e) => log::warn!("poe2 clipboard watcher: failed to store item: {e}"),
                 }
             },
         );

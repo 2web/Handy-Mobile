@@ -211,6 +211,29 @@ mod tests {
     }
 
     #[test]
+    fn the_resolver_must_survive_between_polls() {
+        // The Tauri tracker thread used to build a fresh `ZoneResolver` on
+        // every poll. A `Generating level` line and the `Set Source` line
+        // that names it usually land in different polls (measured against a
+        // real Client.txt: only about a quarter of zone/name pairs share a
+        // timestamp second), so a resolver that does not outlive one poll
+        // never sees both halves of the pair. This test feeds the two
+        // events through separate `feed` calls on the same instance — the
+        // shape `poll_once` must now match — to prove the pairing still
+        // works when nothing but the resolver itself bridges the gap.
+        let mut r = ZoneResolver::new();
+
+        // First poll: only the area line arrives.
+        let first_poll = r.feed(&area(0, "G1_4", 4));
+        assert_eq!(first_poll[0].name, None);
+
+        // Second, later poll, same resolver instance: the name arrives.
+        let second_poll = r.feed(&scene(2, "Clearfell Encampment"));
+        assert_eq!(second_poll[0].code, "G1_4");
+        assert_eq!(second_poll[0].name.as_deref(), Some("Clearfell Encampment"));
+    }
+
+    #[test]
     fn flush_forgets_the_pending_zone() {
         let mut r = ZoneResolver::new();
         r.feed(&area(0, "G1_4", 4));

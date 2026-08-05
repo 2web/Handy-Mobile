@@ -76,8 +76,10 @@ pub fn parse_line(line: &str) -> Option<Event> {
         });
     }
 
-    // Checked before the reward pattern: "X has been slain." would otherwise
-    // never match, since "has received" is not the only thing that follows a name.
+    // Order relative to the reward pattern below is incidental: `SLAIN_RE`
+    // requires "has been slain." and `REWARD_RE` requires "has received", so
+    // the two patterns are mutually exclusive and can never match the same
+    // text.
     if let Some(m) = SLAIN_RE.captures(msg) {
         return Some(Event {
             ts,

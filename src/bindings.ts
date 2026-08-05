@@ -1070,13 +1070,20 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
  * `NaiveDateTime`, which specta cannot describe without its chrono feature. The
  * two timestamps the interface actually shows are rendered as ISO strings here.
  */
-export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; last_ts: string | null; focused: boolean; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null; 
+export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null;
 /**
  * The current zone's act, which is more trustworthy than the last act seen:
  * a global "last act" never resets and would show an act finished hours ago
  * once the player reaches the endgame or a hideout.
  */
-act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number }
+act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number;
+/**
+ * The path actually resolved and polled — the setting, or the default
+ * if unset. Distinct from the `poe2_log_path` setting, which is `null`
+ * by default: when the log cannot be found, this is the one thing the
+ * player needs to see.
+ */
+log_path: string }
 export type RebuildResult = { reparsed: number; failed: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type SecretMap = Partial<{ [key in string]: string }>
