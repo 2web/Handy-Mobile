@@ -7,3 +7,4 @@
 //! boundary rather than by discipline.
 
 pub mod items;
+pub mod store;
