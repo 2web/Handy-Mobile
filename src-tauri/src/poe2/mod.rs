@@ -1,6 +1,4 @@
-//! Path of Exile 2 companion features.
+//! Tauri-side wiring for the Path of Exile 2 section.
 //!
-//! Self-contained by design: everything game-related lives under this module so
-//! that merging upstream Handy changes stays painless.
-
-pub mod items;
+//! The logic lives in the `poe2-core` crate; what belongs here is the glue that
+//! needs an `AppHandle`.
