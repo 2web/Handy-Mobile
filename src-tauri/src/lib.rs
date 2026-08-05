@@ -755,6 +755,11 @@ pub fn run(cli_args: CliArgs) {
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
             helpers::clamshell::is_laptop,
+            poe2::commands::poe2_add_item,
+            poe2::commands::poe2_list_items,
+            poe2::commands::poe2_rebuild_items,
+            poe2::commands::change_poe2_enabled_setting,
+            poe2::commands::change_poe2_clipboard_watch_setting,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,

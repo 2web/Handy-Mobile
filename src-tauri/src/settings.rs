@@ -466,6 +466,10 @@ pub struct AppSettings {
     /// `overlay_position` (position `none` → style `None`).
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
+    #[serde(default = "default_poe2_enabled")]
+    pub poe2_enabled: bool,
+    #[serde(default = "default_poe2_clipboard_watch")]
+    pub poe2_clipboard_watch: bool,
 }
 
 fn default_model() -> String {
@@ -535,6 +539,17 @@ fn default_overlay_style() -> OverlayStyle {
 
 fn default_vad_enabled() -> bool {
     true
+}
+
+/// The game section stays hidden until asked for: Handy is a dictation tool for
+/// most of its users, and a game panel should not appear uninvited.
+fn default_poe2_enabled() -> bool {
+    false
+}
+
+/// Background clipboard reading is the part the user must knowingly agree to.
+fn default_poe2_clipboard_watch() -> bool {
+    false
 }
 
 fn default_debug_mode() -> bool {
@@ -942,6 +957,8 @@ pub fn get_default_settings() -> AppSettings {
         extra_recording_buffer_ms: 0,
         vad_enabled: default_vad_enabled(),
         overlay_style: default_overlay_style(),
+        poe2_enabled: false,
+        poe2_clipboard_watch: false,
     }
 }
 

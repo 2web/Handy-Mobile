@@ -2,3 +2,5 @@
 //!
 //! The logic lives in the `poe2-core` crate; what belongs here is the glue that
 //! needs an `AppHandle`.
+
+pub mod commands;
