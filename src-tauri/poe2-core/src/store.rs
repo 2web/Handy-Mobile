@@ -522,12 +522,24 @@ mod tests {
         TempDbFile(path)
     }
 
-    /// Pins the atomicity the review asked for: a genuine failure mid-write —
-    /// forced here by a second connection holding an exclusive lock on the
-    /// same file, rather than a hook added to `store.rs` for the test's sake —
-    /// must not leave the item's modifiers half-deleted.
+    /// A genuine failure — forced here by a second connection holding an
+    /// exclusive lock on the same file, rather than a hook added to
+    /// `store.rs` for the test's sake — must not leave anything behind.
+    ///
+    /// What this covers: SQLite's transaction is deferred, so it takes the
+    /// write lock at its *first* write statement (the `UPDATE`) and holds it
+    /// for every statement after. Contention from the blocker connection
+    /// therefore fails the write before it starts, proving only that a write
+    /// that never begins changes nothing.
+    /// What this does NOT cover: a failure between the `DELETE` and the
+    /// re-`INSERT` inside the same transaction — the exact window the
+    /// transaction wrapping exists to make safe. There is no way to seize the
+    /// lock mid-transaction from outside once the first statement has taken
+    /// it, so that rollback behavior is covered by code inspection (the
+    /// `DELETE` and `insert_mods` share one `Transaction` and only `commit()`
+    /// makes either durable) rather than by this test.
     #[test]
-    fn failed_reparse_does_not_lose_existing_modifiers() {
+    fn write_that_cannot_start_leaves_the_store_unchanged() {
         let db = temp_db_path("reparse");
         let mut s = Poe2Store::open(&db.0).unwrap();
         let parsed = parse_item(SCEPTRE).unwrap();
@@ -558,10 +570,13 @@ mod tests {
         assert_eq!(counselor_rows, 2);
     }
 
-    /// Same property for `add_item`: a write that fails partway must not leave
-    /// a bare `items` row with no modifiers behind.
+    /// Same technique applied to `add_item`, and the same scope limit applies:
+    /// this shows a write that cannot start creates nothing. It does not
+    /// exercise a failure between the `items` insert and `insert_mods` inside
+    /// the transaction, since the blocker connection can only contend for the
+    /// lock before the first write statement takes it.
     #[test]
-    fn failed_add_item_creates_nothing() {
+    fn add_item_that_cannot_start_creates_nothing() {
         let db = temp_db_path("add");
         let mut s = Poe2Store::open(&db.0).unwrap();
 
