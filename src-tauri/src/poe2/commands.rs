@@ -93,6 +93,14 @@ pub fn change_poe2_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), 
     let mut settings = settings::get_settings(&app);
     settings.poe2_enabled = enabled;
     settings::write_settings(&app, settings.clone());
+    if enabled {
+        // Mirrors change_poe2_clipboard_watch_setting: the watcher now gates
+        // on both flags, so turning the section back on can leave both true
+        // with no thread running (e.g. after enable -> disable section ->
+        // restart -> re-enable). spawn's WATCHER_RUNNING compare-exchange
+        // makes calling it from both commands safe.
+        crate::poe2::watcher::spawn(app);
+    }
     Ok(())
 }
 
