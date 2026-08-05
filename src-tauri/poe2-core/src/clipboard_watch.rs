@@ -160,4 +160,21 @@ mod tests {
         assert!(!watcher.check_once());
         assert!(!watcher.available());
     }
+
+    /// `Ok(None)` is the contract for "no text right now" — a copied
+    /// screenshot or file, not a real failure — and must never trip
+    /// `available()` off. The watcher keeps polling and still picks up an
+    /// item that shows up afterwards.
+    #[test]
+    fn no_text_is_not_an_error_and_watching_keeps_going() {
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let mut watcher = watcher_over(vec![None, None, Some(SCEPTRE.to_string())], seen.clone());
+        assert!(!watcher.check_once());
+        assert!(watcher.available());
+        assert!(!watcher.check_once());
+        assert!(watcher.available());
+        assert!(watcher.check_once());
+        assert!(watcher.available());
+        assert_eq!(seen.borrow().as_slice(), &[SCEPTRE.to_string()]);
+    }
 }

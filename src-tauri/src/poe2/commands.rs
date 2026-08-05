@@ -96,5 +96,12 @@ pub fn change_poe2_clipboard_watch_setting(app: AppHandle, enabled: bool) -> Res
     let mut settings = settings::get_settings(&app);
     settings.poe2_clipboard_watch = enabled;
     settings::write_settings(&app, settings.clone());
+    if enabled {
+        // Starts the polling thread immediately rather than making the user
+        // restart the app to see the toggle they just turned on take effect.
+        // `spawn` itself guards against a duplicate thread if one is already
+        // running.
+        crate::poe2::watcher::spawn(app);
+    }
     Ok(())
 }
