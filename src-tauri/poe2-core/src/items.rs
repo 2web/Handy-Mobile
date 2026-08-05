@@ -36,9 +36,13 @@ static RANGE_VALUE_RE: Lazy<Regex> =
 static PLAIN_VALUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"[-+]?\d+(?:\.\d+)?").unwrap());
 
 // { Crafted Suffix Modifier "of the Stars" (Tier: 4) — Minion, Gem }
+// The kind group absorbs every leading word, not just one: real headers can read
+// "Fractured Prefix Modifier" or "Desecrated Suffix Modifier", where only the
+// last word is the kind we care about. Matching just one word would fail the
+// whole header on the extra word and lose the name and tier along with it.
 static MOD_HEADER_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"^\{\s*(?P<crafted>Crafted\s+)?(?P<kind>[A-Za-z]+\s+)?Modifier(?:\s+"(?P<name>[^"]*)")?(?:\s*\(Tier:\s*(?P<tier>\d+)\))?(?:\s*[—–-]\s*(?P<tags>[^}]*?))?\s*\}$"#,
+        r#"^\{\s*(?P<crafted>Crafted\s+)?(?P<kind>(?:[A-Za-z]+\s+)+)?Modifier(?:\s+"(?P<name>[^"]*)")?(?:\s*\(Tier:\s*(?P<tier>\d+)\))?(?:\s*[—–-]\s*(?P<tags>[^}]*?))?\s*\}$"#,
     )
     .unwrap()
 });
@@ -258,30 +262,58 @@ fn parse_requires(value: &str) -> (Option<i64>, BTreeMap<String, i64>) {
 }
 
 /// The numbers in a modifier. In the advanced format they come with roll bounds.
+///
+/// A ranged value and a plain value can appear in the same line, e.g. a granted
+/// skill level next to a rolled percentage. The ranged spans are matched first
+/// and blanked out of a working copy of the text so the plain pass never
+/// re-matches their digits (which would split "22(21-24)" into 22, 21 and 24),
+/// then both passes are merged back into source order.
 pub fn parse_values(text: &str) -> Vec<ModValue> {
-    let ranged: Vec<ModValue> = RANGE_VALUE_RE
-        .captures_iter(text)
-        .filter_map(|caps| {
-            Some(ModValue {
-                value: caps.get(1)?.as_str().parse().ok()?,
-                value_min: caps.get(2)?.as_str().parse().ok(),
-                value_max: caps.get(3)?.as_str().parse().ok(),
-            })
-        })
-        .collect();
-    if !ranged.is_empty() {
-        return ranged;
+    let mut found: Vec<(usize, ModValue)> = Vec::new();
+    let mut masked = text.as_bytes().to_vec();
+
+    for caps in RANGE_VALUE_RE.captures_iter(text) {
+        let whole = match caps.get(0) {
+            Some(m) => m,
+            None => continue,
+        };
+        let value = match caps.get(1).and_then(|m| m.as_str().parse().ok()) {
+            Some(v) => v,
+            None => continue,
+        };
+        let value_min = caps.get(2).and_then(|m| m.as_str().parse().ok());
+        let value_max = caps.get(3).and_then(|m| m.as_str().parse().ok());
+        found.push((
+            whole.start(),
+            ModValue {
+                value,
+                value_min,
+                value_max,
+            },
+        ));
+        // Ranged spans are pure ASCII, so overwriting their bytes with spaces
+        // keeps the rest of the (possibly non-ASCII) text valid UTF-8.
+        for b in &mut masked[whole.start()..whole.end()] {
+            *b = b' ';
+        }
     }
 
-    PLAIN_VALUE_RE
-        .find_iter(text)
-        .filter_map(|m| m.as_str().parse().ok())
-        .map(|value| ModValue {
-            value,
-            value_min: None,
-            value_max: None,
-        })
-        .collect()
+    let masked_text = String::from_utf8(masked).unwrap_or_default();
+    for m in PLAIN_VALUE_RE.find_iter(&masked_text) {
+        if let Ok(value) = m.as_str().parse() {
+            found.push((
+                m.start(),
+                ModValue {
+                    value,
+                    value_min: None,
+                    value_max: None,
+                },
+            ));
+        }
+    }
+
+    found.sort_by_key(|(pos, _)| *pos);
+    found.into_iter().map(|(_, value)| value).collect()
 }
 
 /// A modifier header -> (kind, name, tier, tags). Not a header -> None.
@@ -304,7 +336,11 @@ pub fn parse_mod_header(line: &str) -> Option<(ModKind, Option<String>, Option<i
         ModKind::Crafted
     } else {
         match caps.name("kind") {
-            Some(m) => ModKind::from_str_or_unknown(m.as_str().trim()),
+            // "Fractured Prefix " -> only the last word carries the kind; the
+            // leading words are qualifiers the format doesn't otherwise expose.
+            Some(m) => {
+                ModKind::from_str_or_unknown(m.as_str().split_whitespace().last().unwrap_or(""))
+            }
             None => ModKind::Unknown,
         }
     };
@@ -626,6 +662,25 @@ mod tests {
     }
 
     #[test]
+    fn plain_value_alongside_a_range_is_kept_in_source_order() {
+        assert_eq!(
+            parse_values("+3 to Level of all Minion Skills and 50(45-50)% increased Something"),
+            vec![
+                ModValue {
+                    value: 3.0,
+                    value_min: None,
+                    value_max: None
+                },
+                ModValue {
+                    value: 50.0,
+                    value_min: Some(45.0),
+                    value_max: Some(50.0)
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn mod_header_prefix() {
         assert_eq!(
             parse_mod_header("{ Prefix Modifier \"Count's\" (Tier: 4) }"),
@@ -647,6 +702,32 @@ mod tests {
                 Some("of the Overseer".to_string()),
                 Some(2),
                 vec!["Minion".to_string(), "Gem".to_string()]
+            ))
+        );
+    }
+
+    #[test]
+    fn two_word_kind_resolves_to_the_last_word() {
+        assert_eq!(
+            parse_mod_header("{ Fractured Prefix Modifier \"of the Whale\" (Tier: 3) }"),
+            Some((
+                ModKind::Prefix,
+                Some("of the Whale".to_string()),
+                Some(3),
+                vec![]
+            ))
+        );
+    }
+
+    #[test]
+    fn two_word_kind_with_tags() {
+        assert_eq!(
+            parse_mod_header("{ Desecrated Suffix Modifier \"of Ruin\" (Tier: 1) — Chaos }"),
+            Some((
+                ModKind::Suffix,
+                Some("of Ruin".to_string()),
+                Some(1),
+                vec!["Chaos".to_string()]
             ))
         );
     }
