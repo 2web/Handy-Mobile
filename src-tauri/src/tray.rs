@@ -381,9 +381,16 @@ pub fn update_tray_menu(app: &AppHandle, locale: Option<&str>) {
                 .expect("failed to create pp model item");
             let _ = submenu.append(&item);
         }
-        let refresh = MenuItem::with_id(app, "pp_model_refresh", &strings.refresh_models, true, None::<&str>)
-            .expect("failed to create refresh models item");
-        let _ = submenu.append(&PredefinedMenuItem::separator(app).expect("failed to create separator"));
+        let refresh = MenuItem::with_id(
+            app,
+            "pp_model_refresh",
+            &strings.refresh_models,
+            true,
+            None::<&str>,
+        )
+        .expect("failed to create refresh models item");
+        let _ = submenu
+            .append(&PredefinedMenuItem::separator(app).expect("failed to create separator"));
         let _ = submenu.append(&refresh);
         submenu
     };
@@ -549,7 +556,11 @@ mod tests {
     fn current_in_shortlist_is_checked_once_no_duplicate() {
         let entries = checked_entries(TRANSLATION_LANGUAGE_SHORTLIST, "de");
         assert_eq!(entries.len(), TRANSLATION_LANGUAGE_SHORTLIST.len());
-        let checked: Vec<&String> = entries.iter().filter(|(_, c)| *c).map(|(code, _)| code).collect();
+        let checked: Vec<&String> = entries
+            .iter()
+            .filter(|(_, c)| *c)
+            .map(|(code, _)| code)
+            .collect();
         assert_eq!(checked, vec![&"de".to_string()]);
         let de_count = entries.iter().filter(|(code, _)| code == "de").count();
         assert_eq!(de_count, 1);

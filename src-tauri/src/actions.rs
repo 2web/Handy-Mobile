@@ -483,16 +483,12 @@ pub(crate) async fn process_transcription_output(
             let system_prompt = settings
                 .post_process_selected_prompt_id
                 .as_ref()
-                .and_then(|id| {
-                    settings
-                        .post_process_prompts
-                        .iter()
-                        .find(|p| &p.id == id)
-                })
+                .and_then(|id| settings.post_process_prompts.iter().find(|p| &p.id == id))
                 .map(|p| p.prompt.clone());
 
             if let Some(system_prompt) = system_prompt {
-                if let Some(processed) = run_llm(&settings, &final_text, system_prompt.clone()).await
+                if let Some(processed) =
+                    run_llm(&settings, &final_text, system_prompt.clone()).await
                 {
                     post_processed_text = Some(processed.clone());
                     final_text = processed;
@@ -969,14 +965,20 @@ struct ClipboardTranslateAction;
 
 impl ShortcutAction for ClipboardTranslateAction {
     fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
-        debug!("ClipboardTranslateAction::start called for binding: {}", binding_id);
+        debug!(
+            "ClipboardTranslateAction::start called for binding: {}",
+            binding_id
+        );
 
         let app = app.clone();
         tauri::async_runtime::spawn(async move {
             let text = match app.clipboard().read_text() {
                 Ok(text) => text,
                 Err(e) => {
-                    debug!("Clipboard translate skipped: failed to read clipboard text: {}", e);
+                    debug!(
+                        "Clipboard translate skipped: failed to read clipboard text: {}",
+                        e
+                    );
                     return;
                 }
             };
@@ -1017,7 +1019,10 @@ impl ShortcutAction for ClipboardTranslateAction {
                 change_tray_icon(&app_for_paste, TrayIconState::Idle);
             })
             .unwrap_or_else(|e| {
-                error!("Failed to run clipboard-translate paste on main thread: {:?}", e);
+                error!(
+                    "Failed to run clipboard-translate paste on main thread: {:?}",
+                    e
+                );
                 utils::hide_recording_overlay(&app);
                 change_tray_icon(&app, TrayIconState::Idle);
             });
@@ -1057,15 +1062,21 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
     let mut map = HashMap::new();
     map.insert(
         "transcribe".to_string(),
-        Arc::new(TranscribeAction { mode: TranscribeMode::Plain }) as Arc<dyn ShortcutAction>,
+        Arc::new(TranscribeAction {
+            mode: TranscribeMode::Plain,
+        }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "transcribe_with_post_process".to_string(),
-        Arc::new(TranscribeAction { mode: TranscribeMode::PostProcess }) as Arc<dyn ShortcutAction>,
+        Arc::new(TranscribeAction {
+            mode: TranscribeMode::PostProcess,
+        }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "transcribe_with_translation".to_string(),
-        Arc::new(TranscribeAction { mode: TranscribeMode::Translate }) as Arc<dyn ShortcutAction>,
+        Arc::new(TranscribeAction {
+            mode: TranscribeMode::Translate,
+        }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "translate_clipboard".to_string(),
