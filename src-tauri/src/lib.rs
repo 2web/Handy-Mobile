@@ -15,7 +15,6 @@ mod managers;
 mod memory;
 mod overlay;
 mod paste_tx;
-mod poe2;
 pub mod portable;
 mod secure_input;
 mod settings;
@@ -775,17 +774,6 @@ pub fn run(cli_args: CliArgs) {
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
             helpers::clamshell::is_laptop,
-            poe2::commands::poe2_add_item,
-            poe2::commands::poe2_list_items,
-            poe2::commands::poe2_rebuild_items,
-            poe2::commands::change_poe2_enabled_setting,
-            poe2::commands::change_poe2_clipboard_watch_setting,
-            poe2::commands::poe2_state,
-            poe2::commands::poe2_rebuild_derived,
-            poe2::commands::change_poe2_log_path_setting,
-            poe2::commands::poe2_equipment,
-            poe2::commands::poe2_set_item_excluded,
-            poe2::commands::change_poe2_resistance_penalty_setting,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,
@@ -1028,9 +1016,6 @@ pub fn run(cli_args: CliArgs) {
             if should_force_show || !should_hide || !tray_available {
                 show_main_window(&app_handle);
             }
-
-            crate::poe2::watcher::spawn(app.handle().clone());
-            crate::poe2::tracker::spawn(app.handle().clone());
 
             Ok(())
         })

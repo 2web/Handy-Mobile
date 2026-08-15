@@ -8,7 +8,7 @@ license = "MIT"
 default-run = "handy"
 
 [workspace]
-members = [".", "poe2-core"]
+members = ["."]
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.
@@ -32,7 +32,6 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 
 [dependencies]
-poe2-core = { path = "poe2-core" }
 once_cell = "1"
 tauri = { version = "2.11.5", features = [
   "protocol-asset",

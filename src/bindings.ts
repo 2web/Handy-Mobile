@@ -908,22 +908,6 @@ async isLaptop() : Promise<Result<boolean, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async poe2AddItem(text: string) : Promise<Result<AddItemResult, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_add_item", { text }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async poe2ListItems() : Promise<Result<StoredItem[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_list_items") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 /**
  * Reparses stored items from their raw text.
  * 
@@ -931,38 +915,6 @@ async poe2ListItems() : Promise<Result<StoredItem[], string>> {
  * gets smarter — and it will — stored items reparse themselves with no
  * re-pasting.
  */
-async poe2RebuildItems() : Promise<Result<RebuildResult, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_rebuild_items") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async changePoe2EnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_poe2_enabled_setting", { enabled }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async changePoe2ClipboardWatchSetting(enabled: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_poe2_clipboard_watch_setting", { enabled }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async poe2State() : Promise<Result<ProgressSnapshot, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_state") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 /**
  * Replays the stored events to rebuild `zones` and `characters`.
  * 
@@ -978,46 +930,6 @@ async poe2State() : Promise<Result<ProgressSnapshot, string>> {
  * no rollback. `events` is left empty — the events already exist and must
  * not be re-inserted.
  */
-async poe2RebuildDerived() : Promise<Result<number, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_rebuild_derived") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async changePoe2LogPathSetting(path: string | null) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_poe2_log_path_setting", { path }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async poe2Equipment() : Promise<Result<EquipmentView, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_equipment") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async poe2SetItemExcluded(itemId: number, excluded: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("poe2_set_item_excluded", { itemId, excluded }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async changePoe2ResistancePenaltySetting(penalty: number | null) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_poe2_resistance_penalty_setting", { penalty }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-}
 }
 
 /** user-defined events **/
@@ -1039,7 +951,6 @@ streamTextEvent: "stream-text-event"
 
 /** user-defined types **/
 
-export type AddItemResult = { id: number; created: boolean; item: StoredItem | null }
 /**
  * The container-level `serde(default)` (backed by the `Default` impl below)
  * guarantees every field — including ones added in the future — falls back to
@@ -1082,25 +993,13 @@ reliable_paste?: boolean; typing_tool?: TypingTool; external_script_path?: strin
  * not gated on this — that follows model capability. Migrated from the old
  * `overlay_position` (position `none` → style `None`).
  */
-overlay_style?: OverlayStyle; poe2_enabled?: boolean; poe2_clipboard_watch?: boolean; poe2_log_path?: string | null; 
-/**
- * The campaign's resistance penalty, as the player reads it off their own
- * character panel. Unset means the calculator shows the gear contribution
- * and withholds any comparison to the cap — a wrong number in the
- * reassuring direction is worse than none.
- */
-poe2_resistance_penalty?: number | null; 
-/**
- * Items the player has excluded from the calculation.
- */
-poe2_excluded_items?: number[] }
+overlay_style?: OverlayStyle }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { transcribe: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
-export type Element = "fire" | "cold" | "lightning" | "chaos"
 export type EngineType = 
 /**
  * Any GGML/GGUF model loaded through transcribe-cpp (Whisper, Parakeet,
@@ -1108,10 +1007,6 @@ export type EngineType =
  * the file, so this one variant covers the whole transcribe-cpp family.
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
-export type EquipmentItem = { id: number; name: string | null; base_type: string | null; item_class: string | null; slot: Slot | null; excluded: boolean; status: EquipmentItemStatus }
-export type EquipmentItemStatus = "worn" | "superseded" | "unrecognised" | "excluded"
-export type EquipmentSummary = { lines: ResistanceLine[]; penalty: number | null; empty_slots: Slot[] }
-export type EquipmentView = { summary: EquipmentSummary; items: EquipmentItem[] }
 export type GpuDeviceOption = { id: number; name: string; total_vram_mb: number }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 export type HistoryUpdatePayload = { action: "added"; entry: HistoryEntry } | { action: "updated"; entry: HistoryEntry } | { action: "deleted"; id: number } | { action: "toggled"; id: number }
@@ -1171,48 +1066,7 @@ export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
-/**
- * What the Progress tab needs, flattened.
- * 
- * `TrackerState` itself does not cross this boundary: its timestamps are
- * `NaiveDateTime`, which specta cannot describe without its chrono feature. The
- * two timestamps the interface actually shows are rendered as ISO strings here.
- */
-export type ProgressSnapshot = { character: string | null; ascendancy: string | null; level: number | null; zone_code: string | null; zone_name: string | null; zone_level: number | null; character_confirmed_ts: string | null; rewards: string[]; level_gap: number | null; seconds_in_zone: number | null; 
-/**
- * The current zone's act, which is more trustworthy than the last act seen:
- * a global "last act" never resets and would show an act finished hours ago
- * once the player reaches the endgame or a hideout.
- */
-act: string | null; log_present: boolean; debug_lines: boolean; importing: boolean; event_count: number; 
-/**
- * The path actually resolved and polled — the setting, or the default
- * if unset. Distinct from the `poe2_log_path` setting, which is `null`
- * by default: when the log cannot be found, this is the one thing the
- * player needs to see.
- */
-log_path: string }
-export type RebuildResult = { reparsed: number; failed: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
-export type ResistanceLine = { element: Element; 
-/**
- * What the worn gear adds up to, before the campaign penalty.
- */
-from_gear: number; 
-/**
- * The figure the character panel would show. `None` for the three elemental
- * resistances while the penalty is unknown — neither "met" nor "short" can
- * be claimed without it.
- */
-total: number | null; cap: number; short_by: number | null; 
-/**
- * Worn slots contributing nothing to this element.
- */
-missing_from: Slot[]; 
-/**
- * Slots with nothing captured for them at all.
- */
-empty_slots: Slot[] }
 export type SecretMap = Partial<{ [key in string]: string }>
 export type SecureInputStatus = { 
 /**
@@ -1247,10 +1101,7 @@ uncovered_bindings: string[];
  */
 recorder_blocked: boolean }
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
-export type Slot = "weapon" | "off_hand" | "body_armour" | "helmet" | "gloves" | "boots" | "belt" | "amulet" | "ring"
 export type SoundTheme = "marimba" | "pop" | "custom"
-export type StoredItem = { id: number; captured_ts: string; raw_text: string; source: string; item_class: string | null; rarity: string | null; name: string | null; base_type: string | null; item_level: number | null; requires_level: number | null; quality: number | null; sockets: string | null; properties: Partial<{ [key in string]: string }>; requirements: Partial<{ [key in string]: number }>; advanced: boolean; mods: StoredMod[] }
-export type StoredMod = { position: number; effect_index: number; kind: string; mod_name: string | null; tier: number | null; tags: string[]; text: string; value: number | null; value_min: number | null; value_max: number | null }
 /**
  * Phase of the streaming overlay card, emitted to drive its UI state.
  */

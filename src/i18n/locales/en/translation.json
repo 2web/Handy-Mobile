@@ -18,103 +18,8 @@
     "advanced": "Advanced",
     "postProcessing": "Post Process",
     "history": "History",
-    "poe2": "Path of Exile 2",
     "debug": "Debug",
     "about": "About"
-  },
-  "poe2": {
-    "items": {
-      "title": "Items",
-      "placeholder": "Hover an item in the game, press Ctrl+C, then paste it here with Ctrl+V",
-      "saved": "Item saved.",
-      "duplicate": "This item is already saved.",
-      "failed": "Could not parse the item.",
-      "notAnItem": "That does not look like an item. Hover it in the game and press Ctrl+C.",
-      "empty": "No items captured yet.",
-      "rebuild": "Reparse stored items",
-      "rebuilt": "Reparsed {{count}} items.",
-      "rebuildFailed": "{{count}} could not be parsed and were left as they were.",
-      "rebuildError": "Could not reparse the stored items.",
-      "rune": "rune",
-      "itemLevel": "ilvl {{level}}",
-      "simpleFormat": "Advanced item descriptions are off in the game — tiers and roll ranges are unavailable."
-    },
-    "tabs": {
-      "progress": "Progress",
-      "items": "Items",
-      "equipment": "Equipment"
-    },
-    "progress": {
-      "noCharacter": "No character identified yet",
-      "confirmed": "character confirmed {{when}}",
-      "unconfirmed": "no event has named a character yet",
-      "level": "Level",
-      "act": "Act",
-      "zoneLevel": "Zone level",
-      "inZone": "In zone",
-      "zone": "Current zone",
-      "gap": "Character level against zone level",
-      "gapUnknown": "needs both a character level and a zone level",
-      "gapBehind": "noticeably below the zone — worth levelling up",
-      "gapSlightly": "slightly behind",
-      "gapFine": "level is fine",
-      "rewards": "Quest rewards",
-      "noRewards": "no rewards yet",
-      "importing": "Reading the game log for the first time — this takes a moment.",
-      "noLog": "Game log not found at {{path}}",
-      "noDebug": "The game log has no DEBUG lines, so zone changes are not tracked.",
-      "logPath": "Game log",
-      "choose": "Choose file…",
-      "reset": "Use the default path",
-      "rebuild": "Rebuild zones and characters",
-      "rebuilt": "Replayed {{count}} events.",
-      "rebuildError": "Could not rebuild from the event log.",
-      "events": "{{count}} events stored"
-    },
-    "equipment": {
-      "title": "Resistances",
-      "fromGear": "From gear",
-      "total": "Total",
-      "cap": "Cap",
-      "short": "short {{amount}}",
-      "atCap": "at the cap",
-      "noItems": "No items captured yet — copy one in the game and paste it on the Items tab.",
-      "loadFailed": "Could not read the equipment data.",
-      "penaltyTitle": "Campaign resistance penalty",
-      "penaltyUnset": "Not set. Totals below are what your gear gives, before the campaign penalty — your character panel will show less.",
-      "penaltyHow": "Open the character panel in the game, compare one elemental resistance with the figure above, and enter the difference.",
-      "penaltyLabel": "Penalty",
-      "penaltySave": "Save",
-      "penaltyClear": "Clear",
-      "penaltyInvalid": "Enter a number between 0 and 100.",
-      "gapsTitle": "Where the missing points could come from",
-      "emptySlots": "Nothing captured for: {{slots}}",
-      "givesNothing": "Worn but giving nothing to this: {{slots}}",
-      "itemsTitle": "Items counted",
-      "statusWorn": "worn",
-      "statusSuperseded": "replaced by something newer",
-      "statusUnrecognised": "class not recognised",
-      "statusExcluded": "excluded by you",
-      "exclude": "Exclude",
-      "include": "Include",
-      "slot": {
-        "weapon": "Weapon",
-        "off_hand": "Off-hand",
-        "body_armour": "Body armour",
-        "helmet": "Helmet",
-        "gloves": "Gloves",
-        "boots": "Boots",
-        "belt": "Belt",
-        "amulet": "Amulet",
-        "ring": "Ring"
-      },
-      "element": {
-        "fire": "Fire",
-        "cold": "Cold",
-        "lightning": "Lightning",
-        "chaos": "Chaos"
-      }
-    }
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",
@@ -361,14 +266,6 @@
       "experimentalToggle": {
         "label": "Experimental Features",
         "description": "Enable experimental features that are still in development."
-      },
-      "poe2": {
-        "label": "Path of Exile 2 tools",
-        "description": "Show a section for capturing items copied from the game."
-      },
-      "poe2Clipboard": {
-        "label": "Watch the clipboard for items",
-        "description": "Reads the clipboard once a second and parses only text starting with Item Class. Nothing is ever written to the clipboard and nothing leaves your computer."
       },
       "lazyStreamClose": {
         "label": "Keep Mic Open Between Transcriptions",
