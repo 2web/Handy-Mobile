@@ -7,7 +7,7 @@ _Бесплатное, открытое и расширяемое приложе
 
 Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
 
-This fork goes one step further: Handy is no longer just speech-to-text — it can also **translate your speech into another language on the fly**, still fully offline, using a local LLM. See [Speech Translation](#-speech-translation-offline) below. It also carries an optional [Path of Exile 2 panel](#-path-of-exile-2-tools-optional), off by default.
+This fork goes one step further: Handy is no longer just speech-to-text — it can also **translate your speech into another language on the fly**, still fully offline, using a local LLM. See [Speech Translation](#-speech-translation-offline) below.
 
 ## Why Handy?
 
@@ -68,18 +68,6 @@ Speak in one language and have Handy paste the text **translated into a language
 - **Translation → Target language:** the language you want to translate into
 
 The translation uses the **same local LLM provider configured for post-processing**, so nothing leaves your computer. Follow the checklist below for a step-by-step setup.
-
-## 🎮 Path of Exile 2 Tools (Optional)
-
-> Also specific to this fork, and **off by default** — Handy is a dictation tool first, so the game panel only appears once you ask for it.
-
-Turn it on in **Settings → Advanced → "Path of Exile 2 tools"**; a **Path of Exile 2** section then appears in the sidebar with three tabs:
-
-- **Progress** — reads the game's own client log to track your current character, level, act and zone, and tells you whether your level is behind the zone you're in. Quest rewards you've taken are listed too. The log path is auto-detected and can be overridden.
-- **Items** — hover an item in the game, press `Ctrl+C`, then paste it into Handy with `Ctrl+V` to store it. Optionally enable **"Watch the clipboard for items"** to capture them automatically: it reads the clipboard once a second, parses only text that starts with `Item Class`, never writes to the clipboard, and sends nothing anywhere.
-- **Equipment** — adds up elemental and chaos resistances across your captured gear, compares them against the cap, and points at which slots the missing points could come from. Enter the campaign's resistance penalty from your character panel to get totals that match what the game shows you.
-
-Everything here is local: the game log and the items you paste never leave your computer.
 
 ## ✅ Getting Started Checklist — Handy + Ollama
 
@@ -623,7 +611,7 @@ Handy is open-source software, but the Handy name, logo, icon, and brand assets 
 
 Handy — кроссплатформенное десктоп-приложение для простого и приватного распознавания речи. Нажмите шорткат, скажите фразу — и текст появится в любом текстовом поле. Всё происходит на вашем компьютере, без отправки данных в облако.
 
-Этот форк идёт дальше: Handy теперь не только распознаёт речь, но и умеет **переводить сказанное на другой язык на лету** — по-прежнему полностью офлайн, с помощью локальной LLM. См. раздел [Перевод речи (оффлайн)](#-перевод-речи-оффлайн) ниже. Также в нём есть опциональная [панель для Path of Exile 2](#-инструменты-для-path-of-exile-2-опционально), выключенная по умолчанию.
+Этот форк идёт дальше: Handy теперь не только распознаёт речь, но и умеет **переводить сказанное на другой язык на лету** — по-прежнему полностью офлайн, с помощью локальной LLM. См. раздел [Перевод речи (оффлайн)](#-перевод-речи-оффлайн) ниже.
 
 ### Почему Handy?
 
@@ -672,18 +660,6 @@ Handy — кроссплатформенное десктоп-приложени
 - **Translation → Target language:** язык, на который переводить
 
 Перевод использует **тот же локальный провайдер, что и post-processing** — ничего не покидает компьютер.
-
-### 🎮 Инструменты для Path of Exile 2 (опционально)
-
-> Тоже особенность этого форка, **по умолчанию выключено** — Handy прежде всего инструмент диктовки, поэтому игровая панель появляется только по вашему запросу.
-
-Включается в **Settings → Advanced → «Path of Exile 2 tools»**, после чего в боковом меню появляется раздел **Path of Exile 2** с тремя вкладками:
-
-- **Progress** — читает клиентский лог игры и отслеживает текущего персонажа, уровень, акт и зону, а также подсказывает, не отстаёт ли ваш уровень от уровня зоны. Показывает взятые награды за квесты. Путь к логу определяется автоматически, его можно задать вручную.
-- **Items** — наведите курсор на предмет в игре, нажмите `Ctrl+C`, затем вставьте его в Handy через `Ctrl+V`. Можно включить **«Watch the clipboard for items»** для автозахвата: буфер читается раз в секунду, разбирается только текст, начинающийся с `Item Class`, в буфер ничего не пишется и никуда не отправляется.
-- **Equipment** — суммирует сопротивления (стихийные и хаосу) по захваченной экипировке, сравнивает с капом и показывает, из каких слотов можно добрать недостающее. Введите штраф сопротивлений за кампанию из панели персонажа, чтобы итоги совпадали с тем, что показывает игра.
-
-Всё локально: лог игры и вставленные предметы не покидают ваш компьютер.
 
 ### ✅ Чек-лист: развернуть Handy + Ollama с нуля
 
