@@ -34,7 +34,61 @@ fn main() {
     // Must run after transcribe staging because that helper recreates transcribe-libs/.
     stage_vc_runtime_dlls();
 
-    tauri_build::build()
+    embed_common_controls_manifest();
+
+    // The manifest for every linked target — the app binary included — comes
+    // from the linker (see `embed_common_controls_manifest`), so tauri must not
+    // embed a second one as a resource: two RT_MANIFEST resources make link.exe
+    // fail with `CVT1100: duplicate resource`. The manifest handed to the
+    // linker is byte-for-byte what tauri would have embedded. Everything else
+    // in tauri's resource (icon, version info) is untouched.
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest()),
+    )
+    .expect("tauri-build failed")
+}
+
+/// Embed the comctl32 v6 dependency into every Windows binary linked here,
+/// test binaries included.
+///
+/// The lib links the dialog stack (`rfd`, via tauri-plugin-dialog), so anything
+/// reachable from it statically imports `TaskDialogIndirect` — an export that
+/// only exists in the side-by-side comctl32 v6 assembly, not in the v5.82
+/// comctl32 in System32. The app binary used to get that dependency from the
+/// manifest tauri embeds as a resource, but test binaries are linked by rustc
+/// with no manifest at all, so the loader bound them to v5.82 and killed the
+/// process at startup with STATUS_ENTRYPOINT_NOT_FOUND (0xc0000139): every test
+/// in the crate failed before a single one ran, with no hint as to why.
+///
+/// Cargo's `rustc-link-arg-tests` covers `tests/*.rs` only, never the lib's own
+/// unit tests — which is exactly the binary that dies — so the manifest has to
+/// go to every linked target, and tauri's resource one has to go (see `main`).
+fn embed_common_controls_manifest() {
+    const MANIFEST: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
+    </dependentAssembly>
+  </dependency>
+</assembly>
+"#;
+
+    // `/MANIFEST` is a link.exe flag; the gnu toolchain has no equivalent and
+    // does not hit this because it is not a supported build target here.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows")
+        || std::env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc")
+    {
+        return;
+    }
+
+    let path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
+        .join("common-controls.manifest");
+    std::fs::write(&path, MANIFEST).expect("write Common-Controls manifest");
+
+    println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+    println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", path.display());
 }
 
 /// Stage the MSVC runtime DLLs into `transcribe-libs/` for app-local deployment.
