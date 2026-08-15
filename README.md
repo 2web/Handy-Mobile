@@ -7,7 +7,7 @@ _Бесплатное, открытое и расширяемое приложе
 
 Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
 
-This fork goes one step further: Handy is no longer just speech-to-text — it can also **translate your speech into another language on the fly**, still fully offline, using a local LLM. See [Speech Translation](#-speech-translation-offline) below.
+This fork goes one step further: Handy is no longer just speech-to-text — it can also **translate your speech into another language on the fly**, still fully offline, using a local LLM. See [Speech Translation](#-speech-translation-offline) below. It also carries an optional [Path of Exile 2 panel](#-path-of-exile-2-tools-optional), off by default.
 
 ## Why Handy?
 
@@ -30,10 +30,21 @@ Handy isn't trying to be the best speech-to-text app—it's trying to be the mos
 The process is entirely local:
 
 - Silence is filtered using VAD (Voice Activity Detection) with Silero
-- Transcription uses your choice of models:
-  - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
-  - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
+- Transcription uses your choice of models, downloaded from **Settings → Models**:
+  - **Whisper** (Tiny → Large v3, incl. Turbo) with GPU acceleration when available
+  - **Parakeet / NeMo** — CPU-friendly, strong performance, automatic language detection
+  - **Moonshine** — small and fast, including **streaming** variants that show the transcription live while you speak
+  - Plus **Canary**, **Voxtral**, **Qwen3-ASR**, **GigaAM**, **SenseVoice**, **Granite Speech** and more; the model list has **Streaming** and **Translation** filters to narrow it down
 - Works on Windows, macOS, and Linux
+
+### Settings Worth Knowing
+
+- **Overlay** (Settings → Advanced) — `None` hides the recording overlay, `Minimal` shows a compact pill, `Live` shows the transcription in real time with a streaming model. **Overlay Position** (top/bottom) is a separate setting.
+- **Remove Filler Words** (Settings → Advanced) — strips common hesitation words from transcriptions; turn it off to keep them. Custom filler words can be added.
+- **Input Channel** (Settings → General) — pick a single channel of a multi-input audio interface instead of averaging all of them.
+- **Application Theme** (Settings → About) — follow the system theme, or pin light/dark.
+- **Reliable Paste (Beta)** (Debug settings, Windows/macOS) — restores the clipboard only once the target app has actually read the transcription, instead of after a fixed delay.
+- **Secure Input warning** (macOS) — when macOS Secure Input blocks the shortcuts, the tray and settings say so and name the app likely responsible, instead of the shortcuts silently doing nothing.
 
 ## 🈯 Speech Translation (Offline)
 
@@ -57,6 +68,18 @@ Speak in one language and have Handy paste the text **translated into a language
 - **Translation → Target language:** the language you want to translate into
 
 The translation uses the **same local LLM provider configured for post-processing**, so nothing leaves your computer. Follow the checklist below for a step-by-step setup.
+
+## 🎮 Path of Exile 2 Tools (Optional)
+
+> Also specific to this fork, and **off by default** — Handy is a dictation tool first, so the game panel only appears once you ask for it.
+
+Turn it on in **Settings → Advanced → "Path of Exile 2 tools"**; a **Path of Exile 2** section then appears in the sidebar with three tabs:
+
+- **Progress** — reads the game's own client log to track your current character, level, act and zone, and tells you whether your level is behind the zone you're in. Quest rewards you've taken are listed too. The log path is auto-detected and can be overridden.
+- **Items** — hover an item in the game, press `Ctrl+C`, then paste it into Handy with `Ctrl+V` to store it. Optionally enable **"Watch the clipboard for items"** to capture them automatically: it reads the clipboard once a second, parses only text that starts with `Item Class`, never writes to the clipboard, and sends nothing anywhere.
+- **Equipment** — adds up elemental and chaos resistances across your captured gear, compares them against the cap, and points at which slots the missing points could come from. Enter the campaign's resistance penalty from your character panel to get totals that match what the game shows you.
+
+Everything here is local: the game log and the items you paste never leave your computer.
 
 ## ✅ Getting Started Checklist — Handy + Ollama
 
@@ -224,7 +247,7 @@ Without these tools, Handy falls back to enigo which may have limited compatibil
 
   - For building from source on Ubuntu/Debian, you may also need `libgtk-layer-shell-dev`.
 
-- The recording overlay is disabled by default on Linux (`Overlay Position: None`) because certain compositors treat it as the active window. When the overlay is visible it can steal focus, which prevents Handy from pasting back into the application that triggered transcription. If you enable the overlay anyway, be aware that clipboard-based pasting might fail or end up in the wrong window.
+- The recording overlay is disabled by default on Linux (**Settings → Advanced → Overlay: `None`**) because certain compositors treat it as the active window. When the overlay is visible it can steal focus, which prevents Handy from pasting back into the application that triggered transcription. If you enable the overlay anyway, be aware that clipboard-based pasting might fail or end up in the wrong window.
 - If you are having trouble with the app, running with the environment variable `WEBKIT_DISABLE_DMABUF_RENDERER=1` may help
 - If Handy fails to start reliably on Linux, see [Troubleshooting → Linux Startup Crashes or Instability](#linux-startup-crashes-or-instability).
 - **Global keyboard shortcuts (Wayland):** On Wayland, system-level shortcuts must be configured through your desktop environment or window manager. Use the [CLI flags](#cli-parameters) as the command for your custom shortcut.
@@ -280,7 +303,7 @@ Without these tools, Handy falls back to enigo which may have limited compatibil
 **Overlay & Pasting Issues (Linux):**
 
 - The recording overlay window can interfere with pasting transcribed text into target applications on Linux (X11)
-- **Solution:** Open **Settings > Advanced** and set **"Overlay Position"** to **"None"** to disable the overlay
+- **Solution:** Open **Settings > Advanced** and set **"Overlay"** to **"None"** to disable the overlay (this is the style setting; "Overlay Position" only chooses top vs. bottom)
 - Enable **"Audio Feedback"** (also in Advanced) if you still want audible confirmation of recording state
 - Users who upgrade from older versions or import settings from other platforms may need to manually apply this change
 
@@ -600,7 +623,7 @@ Handy is open-source software, but the Handy name, logo, icon, and brand assets 
 
 Handy — кроссплатформенное десктоп-приложение для простого и приватного распознавания речи. Нажмите шорткат, скажите фразу — и текст появится в любом текстовом поле. Всё происходит на вашем компьютере, без отправки данных в облако.
 
-Этот форк идёт дальше: Handy теперь не только распознаёт речь, но и умеет **переводить сказанное на другой язык на лету** — по-прежнему полностью офлайн, с помощью локальной LLM. См. раздел [Перевод речи (оффлайн)](#-перевод-речи-оффлайн) ниже.
+Этот форк идёт дальше: Handy теперь не только распознаёт речь, но и умеет **переводить сказанное на другой язык на лету** — по-прежнему полностью офлайн, с помощью локальной LLM. См. раздел [Перевод речи (оффлайн)](#-перевод-речи-оффлайн) ниже. Также в нём есть опциональная [панель для Path of Exile 2](#-инструменты-для-path-of-exile-2-опционально), выключенная по умолчанию.
 
 ### Почему Handy?
 
@@ -616,7 +639,16 @@ Handy — кроссплатформенное десктоп-приложени
 3. **Отпустите** — Handy распознаёт речь
 4. **Готово** — распознанный текст вставляется в активное приложение
 
-Полностью локально: тишина отсекается через VAD (Silero), распознавание — моделями **Whisper** (Small/Medium/Turbo/Large, с GPU-ускорением) или **Parakeet V3** (оптимизирован под CPU, автоопределение языка). Работает на Windows, macOS и Linux.
+Полностью локально: тишина отсекается через VAD (Silero), распознавание — моделями из **Settings → Models**: **Whisper** (от Tiny до Large v3, включая Turbo, с GPU-ускорением), **Parakeet / NeMo** (хорошо работают на CPU, автоопределение языка), **Moonshine** (маленькие и быстрые, есть **стриминговые** версии — показывают текст прямо во время речи), а также **Canary**, **Voxtral**, **Qwen3-ASR**, **GigaAM**, **SenseVoice**, **Granite Speech** и другие. В списке моделей есть фильтры **Streaming** и **Translation**. Работает на Windows, macOS и Linux.
+
+### Настройки, о которых стоит знать
+
+- **Overlay** (Settings → Advanced) — `None` скрывает оверлей записи, `Minimal` показывает компактную «пилюлю», `Live` — транскрипцию в реальном времени (со стриминговой моделью). **Overlay Position** (сверху/снизу) — отдельная настройка.
+- **Remove Filler Words** (Settings → Advanced) — убирает слова-паразиты из расшифровки; можно выключить или дополнить своим списком.
+- **Input Channel** (Settings → General) — выбрать конкретный канал многоканального аудиоинтерфейса вместо усреднения всех.
+- **Application Theme** (Settings → About) — следовать системной теме либо зафиксировать светлую/тёмную.
+- **Reliable Paste (Beta)** (настройки Debug, Windows/macOS) — возвращает буфер обмена только после того, как целевое приложение реально прочитало текст, а не через фиксированную паузу.
+- **Предупреждение о Secure Input** (macOS) — если macOS Secure Input блокирует шорткаты, Handy сообщает об этом в трее и настройках и называет виновное приложение, вместо того чтобы молча не реагировать.
 
 ### 🈯 Перевод речи (оффлайн)
 
@@ -640,6 +672,18 @@ Handy — кроссплатформенное десктоп-приложени
 - **Translation → Target language:** язык, на который переводить
 
 Перевод использует **тот же локальный провайдер, что и post-processing** — ничего не покидает компьютер.
+
+### 🎮 Инструменты для Path of Exile 2 (опционально)
+
+> Тоже особенность этого форка, **по умолчанию выключено** — Handy прежде всего инструмент диктовки, поэтому игровая панель появляется только по вашему запросу.
+
+Включается в **Settings → Advanced → «Path of Exile 2 tools»**, после чего в боковом меню появляется раздел **Path of Exile 2** с тремя вкладками:
+
+- **Progress** — читает клиентский лог игры и отслеживает текущего персонажа, уровень, акт и зону, а также подсказывает, не отстаёт ли ваш уровень от уровня зоны. Показывает взятые награды за квесты. Путь к логу определяется автоматически, его можно задать вручную.
+- **Items** — наведите курсор на предмет в игре, нажмите `Ctrl+C`, затем вставьте его в Handy через `Ctrl+V`. Можно включить **«Watch the clipboard for items»** для автозахвата: буфер читается раз в секунду, разбирается только текст, начинающийся с `Item Class`, в буфер ничего не пишется и никуда не отправляется.
+- **Equipment** — суммирует сопротивления (стихийные и хаосу) по захваченной экипировке, сравнивает с капом и показывает, из каких слотов можно добрать недостающее. Введите штраф сопротивлений за кампанию из панели персонажа, чтобы итоги совпадали с тем, что показывает игра.
+
+Всё локально: лог игры и вставленные предметы не покидают ваш компьютер.
 
 ### ✅ Чек-лист: развернуть Handy + Ollama с нуля
 
