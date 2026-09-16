@@ -1,0 +1,199 @@
+name: "Upstream Sync"
+
+# Раз в неделю подтягивает изменения из апстрима (cjpais/Handy) в этот форк.
+# Ничего не попадает в main автоматически: результат всегда приезжает как PR,
+# чтобы CI прогнался и изменения можно было просмотреть.
+#
+# Два исхода:
+#   * merge прошёл чисто  -> ветка sync/upstream-<дата>-<sha> с merge-коммитом, обычный PR;
+#   * есть конфликты      -> ветка ставится на апстримный коммит как есть и открывается
+#                            draft-PR: GitHub покажет конфликтующие файлы и не даст
+#                            смержить, пока их не разрулят вручную.
+#
+# Токен: PR, созданный встроенным GITHUB_TOKEN, НЕ запускает другие workflow
+# (так устроен GitHub — защита от рекурсии), поэтому сборка/линт на таком PR
+# не прогонятся. Чтобы CI работал, заведите PAT с правами repo и положите его
+# в секрет UPSTREAM_SYNC_TOKEN — воркфлоу подхватит его автоматически.
+
+on:
+  schedule:
+    # каждый понедельник, 05:00 UTC
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "Ветка апстрима, из которой тянуть"
+        required: false
+        default: "main"
+        type: string
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write # нужен для создания метки upstream-sync
+
+env:
+  UPSTREAM_URL: "https://github.com/cjpais/Handy.git"
+  UPSTREAM_REF: ${{ inputs.upstream_ref || 'main' }}
+
+jobs:
+  sync:
+    name: "Merge upstream into a PR"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_URL"
+          # --no-tags: релизные теги апстрима не должны перетирать наши
+          git fetch --no-tags --prune upstream "$UPSTREAM_REF"
+
+      - name: Skip if an upstream-sync PR is already open
+        id: open_pr
+        env:
+          GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --state open --label upstream-sync \
+            --json number,headRefName --jq '.[] | "#\(.number) (\(.headRefName))"')
+          if [ -n "$existing" ]; then
+            {
+              echo "### Синк пропущен"
+              echo ""
+              echo "Уже открыт PR с прошлого запуска — новые PR не плодим:"
+              echo ""
+              echo "$existing" | sed 's/^/- /'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for new upstream commits
+        id: check
+        if: steps.open_pr.outputs.skip == 'false'
+        run: |
+          ahead=$(git rev-list --count "HEAD..upstream/$UPSTREAM_REF")
+          echo "ahead=$ahead" >> "$GITHUB_OUTPUT"
+          if [ "$ahead" -eq 0 ]; then
+            echo "### Апстрим не изменился — синхронизировать нечего." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          sha=$(git rev-parse --short "upstream/$UPSTREAM_REF")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "branch=sync/upstream-$(date -u +%Y%m%d)-$sha" >> "$GITHUB_OUTPUT"
+          echo "$ahead новых коммитов в апстриме (до $sha)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Merge upstream
+        id: merge
+        if: steps.open_pr.outputs.skip == 'false' && steps.check.outputs.ahead != '0'
+        run: |
+          branch="${{ steps.check.outputs.branch }}"
+          git switch -c "$branch"
+
+          # Список коммитов апстрима — пригодится в теле PR в любом случае.
+          git log --no-merges --oneline --max-count=60 \
+            "main..upstream/$UPSTREAM_REF" > /tmp/upstream-commits.txt || true
+
+          if git merge --no-ff --no-edit \
+              -m "chore(sync): merge upstream/$UPSTREAM_REF (${{ steps.check.outputs.sha }})" \
+              "upstream/$UPSTREAM_REF"; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > /tmp/conflicts.txt
+            git merge --abort
+            # Конфликтные маркеры в коммит не кладём: ставим ветку на апстримный
+            # коммит, тогда GitHub сам покажет конфликты в PR и заблокирует merge.
+            git reset --hard "upstream/$UPSTREAM_REF"
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          git push --force-with-lease -u origin "$branch"
+
+      - name: Open pull request
+        if: steps.open_pr.outputs.skip == 'false' && steps.check.outputs.ahead != '0'
+        env:
+          GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.check.outputs.branch }}
+          SHA: ${{ steps.check.outputs.sha }}
+          AHEAD: ${{ steps.check.outputs.ahead }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+        run: |
+          gh label create upstream-sync \
+            --color 1d76db --description "Автосинхронизация с cjpais/Handy" --force
+
+          {
+            echo "## Human Written Description"
+            echo ""
+            echo "_TODO (человеку): одна-две фразы, если этот синк нужно как-то прокомментировать._"
+            echo ""
+            echo "Механический синк с [cjpais/Handy](https://github.com/cjpais/Handy):"
+            echo "\`$UPSTREAM_REF\` на коммите \`$SHA\`, $AHEAD новых коммитов."
+            echo "PR открыт автоматически workflow \`Upstream Sync\`."
+            echo ""
+            if [ "$CONFLICTS" = "true" ]; then
+              echo "## ⚠️ Требуется ручной merge"
+              echo ""
+              echo "Автоматический merge упал на конфликтах, поэтому ветка \`$BRANCH\`"
+              echo "указывает на апстримный коммит как есть (конфликтных маркеров в истории нет)."
+              echo "GitHub не даст смержить PR, пока конфликты не разрешены."
+              echo ""
+              echo "Конфликтующие файлы:"
+              echo ""
+              sed 's/^/- `/; s/$/`/' /tmp/conflicts.txt
+              echo ""
+              echo "Локально:"
+              echo ""
+              echo '```bash'
+              echo "git fetch origin main '$BRANCH'"
+              echo "git switch main && git switch -c resolve-$BRANCH"
+              echo "git merge origin/$BRANCH   # разрешить конфликты, закоммитить"
+              echo '```'
+            else
+              echo "Merge прошёл без конфликтов."
+            fi
+            echo ""
+            echo "## Коммиты апстрима"
+            echo ""
+            echo '```'
+            cat /tmp/upstream-commits.txt
+            echo '```'
+            echo ""
+            echo "## Testing"
+            echo ""
+            echo "Локально не тестировалось: PR создан автоматикой. Мержить только после зелёного CI"
+            echo "(\`bun run lint\`, \`bunx tsc --noEmit\`, \`cargo test\`, сборка) на этом PR."
+            echo ""
+            echo "## AI Assistance"
+            echo ""
+            echo "- [x] No AI was used in this PR"
+            echo ""
+            echo "Ветка собрана скриптом \`git merge\` в GitHub Actions, без AI."
+          } > /tmp/pr-body.md
+
+          title="chore(sync): upstream $UPSTREAM_REF @ $SHA"
+          draft=()
+          if [ "$CONFLICTS" = "true" ]; then
+            title="$title (⚠️ конфликты)"
+            draft=(--draft)
+          fi
+
+          url=$(gh pr create --base main --head "$BRANCH" \
+            --title "$title" --body-file /tmp/pr-body.md \
+            --label upstream-sync "${draft[@]}")
+          echo "PR: $url" >> "$GITHUB_STEP_SUMMARY"

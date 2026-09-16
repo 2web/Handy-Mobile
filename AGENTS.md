@@ -204,6 +204,23 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 
 See the [Troubleshooting](README.md#troubleshooting) section in README.md.
 
+## Upstream sync
+
+This repo is a fork of [cjpais/Handy](https://github.com/cjpais/Handy). The `Upstream Sync`
+workflow (`.github/workflows/upstream-sync.yml`) runs every Monday at 05:00 UTC (and on demand
+via `workflow_dispatch`) and opens a PR into `main` — it never pushes to `main` directly.
+
+- Clean merge: the PR head is `sync/upstream-<date>-<sha>` with a real merge commit.
+- Conflicts: the branch is reset to the upstream commit and the PR is opened as a draft, so
+  GitHub shows the conflicting files and blocks the merge until someone resolves them by hand.
+  No conflict markers are ever committed.
+- Only one open sync PR at a time — if the previous one is still open, the run is skipped.
+- PRs opened with the default `GITHUB_TOKEN` do not trigger other workflows. To get CI on sync
+  PRs, add a PAT with `repo` scope as the `UPSTREAM_SYNC_TOKEN` secret; the workflow prefers it.
+
+Scheduled workflows only run from the default branch, so the schedule starts working once this
+file's workflow is on `main`.
+
 ## GitHub workflow for AI coding assistants
 
 **MANDATORY. Before opening any PR, issue, or discussion in this repo: you MUST read the relevant template file and follow it strictly.** That includes sections that look "ceremonial" — checklists, AI Assistance disclosures, "Human Written Description". A generic Summary/Test-plan layout is not acceptable.
