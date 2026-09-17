@@ -35,12 +35,14 @@
 ### Task 1: i18n key, `language_english_name` visibility, shortlist + pure helper
 
 **Files:**
+
 - Modify: `src/i18n/locales/en/translation.json` (`tray` object, after `"cancel"`)
 - Modify: `src/i18n/locales/ru/translation.json` (`tray` object)
 - Modify: `src-tauri/src/actions.rs:82` (visibility of `language_english_name`)
 - Modify: `src-tauri/src/tray.rs` (add const + helper near the top of the file, after the `use` block; add tests to a `#[cfg(test)] mod tests`)
 
 **Interfaces:**
+
 - Produces: `pub(crate) fn language_english_name(code: &str) -> String` (already exists in actions.rs; only visibility changes). `TRANSLATION_LANGUAGE_SHORTLIST: &[&str]` and `pub(crate) fn language_menu_entries(shortlist: &[&str], current: &str) -> Vec<(String, bool)>` in tray.rs. `TrayStrings.translation_language` (generated from the en i18n key).
 
 - [ ] **Step 1: Add the English tray key**
@@ -71,7 +73,9 @@ In `src-tauri/src/actions.rs`, change the signature at line ~82 from:
 ```rust
 fn language_english_name(code: &str) -> String {
 ```
+
 to:
+
 ```rust
 pub(crate) fn language_english_name(code: &str) -> String {
 ```
@@ -153,10 +157,12 @@ git commit -m "feat(tray): add translation-language shortlist helper and i18n la
 ### Task 2: Tray submenu + menu-event handler
 
 **Files:**
+
 - Modify: `src-tauri/src/tray.rs` (`update_tray_menu`, ~line 216–293)
 - Modify: `src-tauri/src/lib.rs` (tray `on_menu_event`, ~line 288, after the `model_select:` arm)
 
 **Interfaces:**
+
 - Consumes: `TRANSLATION_LANGUAGE_SHORTLIST`, `language_menu_entries` (Task 1), `crate::actions::language_english_name`, `strings.translation_language` (Task 1 i18n), `settings.translation_target_language`, `settings::get_settings`, `settings::write_settings`, `tray::update_tray_menu`.
 - Produces: menu item ids of the form `translate_lang:{code}`; a `translation_language_submenu` in the Idle tray menu.
 
@@ -271,6 +277,7 @@ Expected: checkmark tracks selection; translations use the selected language; no
 ## Self-Review
 
 **Spec coverage:**
+
 - Tray submenu with shortlist + checkmark → Task 2 Steps 1–2. ✅
 - One-click switch writes shared setting → Task 2 Step 3. ✅
 - Current-language-always-visible (append if outside shortlist) → Task 1 helper + test. ✅
