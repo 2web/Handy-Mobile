@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Afslut",
     "cancel": "Annuller",
+    "translationLanguage": "Oversættelsessprog",
+    "postProcessModel": "Model til efterbehandling",
+    "refreshModels": "Opdater modeller",
     "secureInputWarning": "⚠ Genveje blokeret af Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Genvej til efterbehandling",
             "description": "Valgfrit: En dedikeret genvej, der altid anvender AI-efterbehandling på din transskription."
+          },
+          "translate_clipboard": {
+            "name": "Genvej til oversættelse af udklipsholder",
+            "description": "Oversætter teksten, der aktuelt er i udklipsholderen, og indsætter resultatet ved markøren."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Annuller",
         "selectToEdit": "Vælg en prompt ovenfor for at se og redigere dens detaljer.",
         "createFirst": "Klik på 'Opret ny prompt' ovenfor for at oprette din første efterbehandlingsprompt."
+      }
+    },
+    "translation": {
+      "title": "Oversættelse",
+      "targetLanguage": {
+        "title": "Målsprog",
+        "description": "Diktering startet med oversættelsesgenvejen oversættes til dette sprog med den samme LLM-udbyder, som er konfigureret til efterbehandling."
+      },
+      "shortcut": {
+        "title": "Genvej til oversættelse"
       }
     },
     "history": {

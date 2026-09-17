@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Çıkış",
     "cancel": "İptal",
+    "translationLanguage": "Çeviri Dili",
+    "postProcessModel": "Son İşlem Modeli",
+    "refreshModels": "Modelleri yenile",
     "secureInputWarning": "⚠ Kısayollar Secure Input tarafından engelleniyor"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Son İşlem Kısayolu",
             "description": "İsteğe bağlı: Transkripsiyonunuza her zaman yapay zekâ ile son işlem uygulayan özel bir kısayol tuşu."
+          },
+          "translate_clipboard": {
+            "name": "Pano Çeviri Kısayolu",
+            "description": "Panoda bulunan metni çevirir ve sonucu imlecin bulunduğu yere yapıştırır."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "İptal",
         "selectToEdit": "Ayrıntılarını görüntülemek ve düzenlemek için yukarıdan bir prompt seçin.",
         "createFirst": "İlk son işlem promptunuzu oluşturmak için yukarıdaki “Yeni Prompt Oluştur” seçeneğine tıklayın."
+      }
+    },
+    "translation": {
+      "title": "Çeviri",
+      "targetLanguage": {
+        "title": "Hedef dil",
+        "description": "Çeviri kısayoluyla başlatılan dikte, son işlem için yapılandırılan aynı LLM sağlayıcısı kullanılarak bu dile çevrilir."
+      },
+      "shortcut": {
+        "title": "Çeviri kısayolu"
       }
     },
     "history": {

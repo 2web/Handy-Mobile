@@ -7,6 +7,9 @@
     "model": "モデル",
     "quit": "終了",
     "cancel": "キャンセル",
+    "translationLanguage": "翻訳言語",
+    "postProcessModel": "後処理モデル",
+    "refreshModels": "モデルを再読み込み",
     "secureInputWarning": "⚠ Secure Input でショートカットがブロック中"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "後処理のショートカット",
             "description": "文字起こしに常に AI 後処理を適用するキーボードショートカット。 (任意)"
+          },
+          "translate_clipboard": {
+            "name": "クリップボード翻訳のショートカット",
+            "description": "クリップボードにあるテキストを翻訳し、結果をカーソル位置に貼り付けます。"
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "キャンセル",
         "selectToEdit": "上からプロンプトを選択して、詳細を表示・編集します。",
         "createFirst": "上の「新しいプロンプトを作成」をクリックして、最初の後処理プロンプトを作成してください。"
+      }
+    },
+    "translation": {
+      "title": "翻訳",
+      "targetLanguage": {
+        "title": "翻訳先の言語",
+        "description": "翻訳ショートカットで開始した音声入力は、後処理用に設定したものと同じ LLM プロバイダーを使ってこの言語に翻訳されます。"
+      },
+      "shortcut": {
+        "title": "翻訳のショートカット"
       }
     },
     "history": {

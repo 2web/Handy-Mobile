@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Ukončit",
     "cancel": "Zrušit",
+    "translationLanguage": "Jazyk překladu",
+    "postProcessModel": "Model následného zpracování",
+    "refreshModels": "Obnovit modely",
     "secureInputWarning": "⚠ Zkratky blokuje Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Klávesa pro následné zpracování",
             "description": "Volitelné: Vyhrazená klávesová zkratka, která vždy použije AI následné zpracování na váš přepis."
+          },
+          "translate_clipboard": {
+            "name": "Klávesa pro překlad schránky",
+            "description": "Přeloží text, který je aktuálně ve schránce, a vloží výsledek na pozici kurzoru."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Zrušit",
         "selectToEdit": "Vyberte výše prompt, abyste zobrazili a upravili jeho podrobnosti.",
         "createFirst": "Klikněte nahoře na 'Vytvořit nový prompt' a vytvořte svůj první prompt pro následné zpracování."
+      }
+    },
+    "translation": {
+      "title": "Překlad",
+      "targetLanguage": {
+        "title": "Cílový jazyk",
+        "description": "Diktování spuštěné klávesovou zkratkou pro překlad se přeloží do tohoto jazyka pomocí stejného poskytovatele LLM, který je nastavený pro následné zpracování."
+      },
+      "shortcut": {
+        "title": "Zkratka překladu"
       }
     },
     "history": {

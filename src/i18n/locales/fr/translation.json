@@ -7,6 +7,9 @@
     "model": "Modèle",
     "quit": "Quitter",
     "cancel": "Annuler",
+    "translationLanguage": "Langue de traduction",
+    "postProcessModel": "Modèle de post-traitement",
+    "refreshModels": "Actualiser les modèles",
     "secureInputWarning": "⚠ Raccourcis bloqués par Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Raccourci de post-traitement",
             "description": "Facultatif : Un raccourci dédié qui applique toujours le post-traitement IA à votre transcription."
+          },
+          "translate_clipboard": {
+            "name": "Raccourci de traduction du presse-papiers",
+            "description": "Traduit le texte actuellement dans le presse-papiers et colle le résultat à la position du curseur."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Annuler",
         "selectToEdit": "Sélectionnez un prompt ci-dessus pour voir et modifier ses détails.",
         "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement."
+      }
+    },
+    "translation": {
+      "title": "Traduction",
+      "targetLanguage": {
+        "title": "Langue cible",
+        "description": "La dictée lancée avec le raccourci de traduction est traduite dans cette langue par le même fournisseur LLM que celui configuré pour le post-traitement."
+      },
+      "shortcut": {
+        "title": "Raccourci de traduction"
       }
     },
     "history": {

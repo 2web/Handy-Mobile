@@ -7,6 +7,9 @@
     "model": "模型",
     "quit": "退出",
     "cancel": "取消",
+    "translationLanguage": "翻译语言",
+    "postProcessModel": "后处理模型",
+    "refreshModels": "刷新模型",
     "secureInputWarning": "⚠ 快捷键被 Secure Input 阻止"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "后处理快捷键",
             "description": "可选：一个专用快捷键，始终对您的转录应用 AI 后处理。"
+          },
+          "translate_clipboard": {
+            "name": "剪贴板翻译快捷键",
+            "description": "翻译当前剪贴板中的文本，并将结果粘贴到光标处。"
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "取消",
         "selectToEdit": "选择上方的提示词以查看和编辑其详细信息。",
         "createFirst": "点击上方的「创建新提示词」来创建您的第一个后处理提示词。"
+      }
+    },
+    "translation": {
+      "title": "翻译",
+      "targetLanguage": {
+        "title": "目标语言",
+        "description": "使用翻译快捷键触发的语音输入，会通过为后处理配置的同一个 LLM 提供方翻译成该语言。"
+      },
+      "shortcut": {
+        "title": "翻译快捷键"
       }
     },
     "history": {

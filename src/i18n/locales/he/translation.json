@@ -7,6 +7,9 @@
     "model": "מודל",
     "quit": "יציאה",
     "cancel": "ביטול",
+    "translationLanguage": "שפת התרגום",
+    "postProcessModel": "מודל עיבוד משלים",
+    "refreshModels": "רענן מודלים",
     "secureInputWarning": "⚠ קיצורי המקשים חסומים על ידי Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "קיצור לעיבוד משלים",
             "description": "אופציונלי: קיצור מקשים ייעודי שתמיד מפעיל עיבוד AI על התמלול."
+          },
+          "translate_clipboard": {
+            "name": "קיצור לתרגום הלוח",
+            "description": "מתרגם את הטקסט שנמצא כעת בלוח ומדביק את התוצאה במיקום הסמן."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "ביטול",
         "selectToEdit": "בחר פרומפט למעלה כדי לצפות בפרטים שלו ולערוך אותם.",
         "createFirst": "לחץ על 'צור פרומפט חדש' למעלה כדי ליצור את פרומפט העיבוד הראשון שלך."
+      }
+    },
+    "translation": {
+      "title": "תרגום",
+      "targetLanguage": {
+        "title": "שפת יעד",
+        "description": "הכתבה שמופעלת עם קיצור התרגום מתורגמת לשפה זו באמצעות אותו ספק LLM שמוגדר לעיבוד משלים."
+      },
+      "shortcut": {
+        "title": "קיצור לתרגום"
       }
     },
     "history": {
