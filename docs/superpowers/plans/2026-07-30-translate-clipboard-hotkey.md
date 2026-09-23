@@ -33,10 +33,12 @@ No new files. `translate_clipboard` is deliberately NOT added to `is_transcribe_
 ### Task 1: Backend action, registration, and default binding
 
 **Files:**
+
 - Modify: `src-tauri/src/actions.rs` (add import near line 25; add struct + impl after `CancelAction` ~line 935; register in `ACTION_MAP` ~line 975; add test in `mod tests`)
 - Modify: `src-tauri/src/settings.rs` (add binding after the `transcribe_with_translation` insert, ~line 853; extend test ~line 1516)
 
 **Interfaces:**
+
 - Consumes (already defined in actions.rs): `trait ShortcutAction { fn start(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str); fn stop(...); }`; `fn build_translation_prompt(target_language_code: &str) -> String`; `async fn run_llm(settings: &AppSettings, transcription: &str, system_prompt: String) -> Option<String>`; `crate::settings::get_settings(app) -> AppSettings`; `crate::utils::paste(text: String, app: AppHandle) -> Result<(), String>`.
 - Produces: `ACTION_MAP["translate_clipboard"] -> Arc<dyn ShortcutAction>`; default `ShortcutBinding` with `id = "translate_clipboard"`.
 
@@ -197,11 +199,13 @@ git commit -m "feat(shortcut): add translate-clipboard hotkey action and default
 ### Task 2: Frontend shortcut UI and i18n labels
 
 **Files:**
+
 - Modify: `src/components/settings/post-processing/PostProcessingSettings.tsx` (Translation `SettingsGroup`, ~line 449)
 - Modify: `src/i18n/locales/en/translation.json` (`settings.general.shortcut.bindings`, ~line 178)
 - Modify: `src/i18n/locales/ru/translation.json` (same path)
 
 **Interfaces:**
+
 - Consumes: `ShortcutInput` component (already imported in `PostProcessingSettings.tsx`), the backend binding id `translate_clipboard` from Task 1, and the i18n lookup pattern `settings.general.shortcut.bindings.${shortcutId}.{name,description}` (GlobalShortcutInput.tsx:256–263).
 - Produces: a visible, rebindable shortcut row for `translate_clipboard` in the Translation section.
 
@@ -290,6 +294,7 @@ Open Settings → Translation section. Confirm a "Перевод буфера о
 ## Self-Review
 
 **Spec coverage:**
+
 - "Translate text currently in memory (clipboard)" → Task 1 Step 5 reads `clipboard().read_text()`. ✅
 - "On a keyboard shortcut" → Task 1 Steps 6–7 register action + default binding; routed via handler.rs simple path. ✅
 - Reuse existing translation pipeline (no dup) → Task 1 uses `build_translation_prompt` + `run_llm`. ✅
