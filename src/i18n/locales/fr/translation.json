@@ -7,6 +7,9 @@
     "model": "Modèle",
     "quit": "Quitter",
     "cancel": "Annuler",
+    "translationLanguage": "Langue de traduction",
+    "postProcessModel": "Modèle de post-traitement",
+    "refreshModels": "Actualiser les modèles",
     "secureInputWarning": "⚠ Raccourcis bloqués par Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Raccourci de post-traitement",
             "description": "Facultatif : Un raccourci dédié qui applique toujours le post-traitement IA à votre transcription."
+          },
+          "translate_clipboard": {
+            "name": "Raccourci de traduction du presse-papiers",
+            "description": "Traduit le texte actuellement dans le presse-papiers et colle le résultat à la position du curseur."
           }
         },
         "errors": {
@@ -214,9 +221,19 @@
         "noResults": "Aucune langue trouvée",
         "auto": "Automatique"
       },
-      "pushToTalk": {
-        "label": "Appuyer pour parler",
-        "description": "Maintenez pour enregistrer, relâchez pour arrêter"
+      "shortcutActivation": {
+        "title": "Comportement du raccourci",
+        "description": "Choisissez comment le raccourci de transcription démarre et arrête l’enregistrement.",
+        "options": {
+          "holdOrToggle": "Auto",
+          "pushToTalk": "Maintenir",
+          "toggle": "Basculer"
+        },
+        "descriptions": {
+          "hold_or_toggle": "Maintenez pour enregistrer ou appuyez brièvement pour basculer",
+          "push_to_talk": "Enregistre tant que le raccourci est maintenu",
+          "toggle": "Appuyez sur le raccourci pour démarrer l'enregistrement, appuyez à nouveau pour arrêter"
+        }
       }
     },
     "sound": {
@@ -377,6 +394,14 @@
         "title": "Détection d'activité vocale (VAD)",
         "description": "Filtre le silence des enregistrements. Les modèles compatibles avec le streaming utilisent une marge de détection VAD plus longue ; désactiver le VAD enregistre l'audio brut."
       },
+      "vadBackend": {
+        "title": "Backend de détection vocale",
+        "description": "Choisissez le détecteur utilisé pour filtrer le silence. Earshot est expérimental ; revenez à Silero si la parole est coupée ou si le bruit est conservé.",
+        "options": {
+          "silero": "Silero",
+          "earshot": "Earshot"
+        }
+      },
       "fillerWordRemoval": {
         "title": "Supprimer les mots de remplissage",
         "description": "Supprime les hésitations courantes des transcriptions. Désactivez cette option pour les conserver."
@@ -436,6 +461,16 @@
         "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement."
       }
     },
+    "translation": {
+      "title": "Traduction",
+      "targetLanguage": {
+        "title": "Langue cible",
+        "description": "La dictée lancée avec le raccourci de traduction est traduite dans cette langue par le même fournisseur LLM que celui configuré pour le post-traitement."
+      },
+      "shortcut": {
+        "title": "Raccourci de traduction"
+      }
+    },
     "history": {
       "title": "Historique",
       "openFolder": "Ouvrir le dossier des enregistrements",
@@ -474,7 +509,8 @@
       },
       "updateChecks": {
         "label": "Vérifier les mises à jour",
-        "description": "Vérifier automatiquement les nouvelles versions de Handy"
+        "description": "Vérifier automatiquement les nouvelles versions de Handy",
+        "lockedDescription": "Désactivé par la configuration système (HANDY_DISABLE_UPDATER)"
       },
       "soundTheme": {
         "label": "Thème sonore",
@@ -537,6 +573,10 @@
         "title": "Délai de collage (après)",
         "description": "Délai (en millisecondes) après la touche de collage, avant la restauration de votre presse-papiers précédent. Augmentez si l'ancien contenu du presse-papiers est collé à la place de la transcription."
       },
+      "holdThreshold": {
+        "title": "Seuil de maintien",
+        "description": "Mode Auto uniquement : durée (en millisecondes) pendant laquelle le raccourci doit rester enfoncé pour compter comme un maintien plutôt qu'une pression brève. Diminuez si l'enregistrement reste actif après un maintien court ; augmentez si des pressions brèves volontaires sont traitées comme un maintien."
+      },
       "reliablePaste": {
         "title": "Collage fiable (Beta)",
         "description": "Restaure le presse-papiers uniquement après que l'application cible a réellement lu la transcription, au lieu d'attendre un délai fixe. Vise à corriger le collage de l'ancien contenu du presse-papiers lorsque le système est chargé. Nécessite une méthode de collage par presse-papiers ; macOS et Windows uniquement."
@@ -571,6 +611,13 @@
         "button": "Aperçu",
         "noNotes": "Aucune note de version intégrée trouvée",
         "error": "Impossible d’afficher l’aperçu des notes de version"
+      },
+      "onboardingPreview": {
+        "title": "Aperçu de la configuration initiale",
+        "description": "Prévisualisez les écrans de configuration sans modifier les autorisations, les modèles ou l’état d’achèvement",
+        "permissionsButton": "Autorisations",
+        "modelsButton": "Sélection du modèle",
+        "exitButton": "Quitter l’aperçu"
       }
     },
     "about": {

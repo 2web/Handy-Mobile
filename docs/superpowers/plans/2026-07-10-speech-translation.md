@@ -23,12 +23,14 @@
 ### Task 1: Backend setting, command, and default shortcut binding
 
 **Files:**
+
 - Modify: `src-tauri/src/settings.rs` (add field to `AppSettings`, default fn, wire into `get_default_settings()`, add default binding)
 - Modify: `src-tauri/src/shortcut/mod.rs` (add setting-change command)
 - Modify: `src-tauri/src/lib.rs:544` (register command in the command list)
 - Test: inline `#[cfg(test)]` in `src-tauri/src/settings.rs`
 
 **Interfaces:**
+
 - Produces: `AppSettings.translation_target_language: String` (default `"en"`); binding id `"transcribe_with_translation"`; command `change_translation_target_language_setting(app, language: String) -> Result<(), String>` (TS: `commands.changeTranslationTargetLanguageSetting`).
 
 - [ ] **Step 1: Write the failing test**
@@ -143,10 +145,12 @@ git commit -m "feat: add translation target language setting and translate short
 ### Task 2: Translation prompt builder (pure Rust)
 
 **Files:**
+
 - Modify: `src-tauri/src/actions.rs` (add prompt builder + language-name map)
 - Test: inline `#[cfg(test)]` in `src-tauri/src/actions.rs`
 
 **Interfaces:**
+
 - Produces: `fn build_translation_prompt(target_language_code: &str) -> String` and `fn language_english_name(code: &str) -> String` in `actions.rs`.
 
 - [ ] **Step 1: Write the failing test**
@@ -252,10 +256,12 @@ git commit -m "feat: add translation system-prompt builder"
 ### Task 3: Wire the Translate mode into the transcription pipeline (Rust)
 
 **Files:**
+
 - Modify: `src-tauri/src/actions.rs` (mode enum, `run_llm` refactor, `process_transcription_output` signature, `ACTION_MAP`)
 - Test: inline `#[cfg(test)]` in `src-tauri/src/actions.rs`
 
 **Interfaces:**
+
 - Consumes: `build_translation_prompt` (Task 2); `AppSettings.translation_target_language` (Task 1); `crate::llm_client::send_chat_completion_with_schema(&provider, api_key: String, &model, user_content: String, system_prompt: Option<String>, json_schema: Option<Value>, reasoning_effort: Option<String>, reasoning: Option<ReasoningConfig>)`.
 - Produces: `enum TranscribeMode { Plain, PostProcess, Translate }`; `ACTION_MAP["transcribe_with_translation"]`.
 
@@ -303,10 +309,13 @@ struct TranscribeAction {
 3. Rename `post_process_transcription` to `run_llm` and take an explicit system prompt. Change its signature and the two call sites of the selected-prompt logic:
 
 Replace the function header
+
 ```rust
 async fn post_process_transcription(settings: &AppSettings, transcription: &str) -> Option<String> {
 ```
+
 with
+
 ```rust
 async fn run_llm(
     settings: &AppSettings,
@@ -316,6 +325,7 @@ async fn run_llm(
 ```
 
 Inside `run_llm`, DELETE the block that reads `post_process_selected_prompt_id` and looks up `prompt` from `settings.post_process_prompts` (the `selected_prompt_id` / `prompt` resolution, roughly lines 132–158), and replace every later use of the local `prompt` variable with the `system_prompt` parameter:
+
 - `let system_prompt = build_system_prompt(&prompt);` → `let system_prompt = build_system_prompt(&system_prompt);`
 - legacy-mode `let processed_prompt = prompt.replace("${output}", transcription);` → `let processed_prompt = system_prompt.replace("${output}", transcription);`
 
@@ -324,6 +334,7 @@ Inside `run_llm`, DELETE the block that reads `post_process_selected_prompt_id` 
 4. Update `process_transcription_output` to take the mode and choose the prompt:
 
 Replace its signature
+
 ```rust
 pub(crate) async fn process_transcription_output(
     app: &AppHandle,
@@ -331,7 +342,9 @@ pub(crate) async fn process_transcription_output(
     post_process: bool,
 ) -> ProcessedTranscription {
 ```
+
 with
+
 ```rust
 pub(crate) async fn process_transcription_output(
     app: &AppHandle,
@@ -422,9 +435,11 @@ git commit -m "feat: add Translate transcription mode reusing the LLM pipeline"
 ### Task 4: Frontend settings-store updater
 
 **Files:**
+
 - Modify: `src/stores/settingsStore.ts:164` (add updater entry inside `settingUpdaters`)
 
 **Interfaces:**
+
 - Consumes: `commands.changeTranslationTargetLanguageSetting` (generated from Task 1 after a build).
 - Produces: `updateSetting("translation_target_language", code)` now persists.
 
@@ -459,12 +474,14 @@ git commit -m "feat: persist translation target language setting from the store"
 ### Task 5: Frontend Translation UI (dropdown + shortcut + i18n)
 
 **Files:**
+
 - Create: `src/components/settings/TranslationTargetLanguage.tsx`
 - Modify: `src/components/settings/index.ts` (export the new component)
 - Modify: `src/components/settings/post-processing/PostProcessingSettings.tsx` (add a Translation settings group)
 - Modify: `src/i18n/locales/en/translation.json` (add `settings.translation.*` keys)
 
 **Interfaces:**
+
 - Consumes: `useSettings` (`getSetting`/`updateSetting`), `SELECTABLE_LANGUAGES` + `getLanguageLabel` from `@/lib/constants/languages`, the `Dropdown` UI component, `ShortcutInput`.
 
 - [ ] **Step 1: Add i18n keys**
@@ -505,42 +522,41 @@ interface TranslationTargetLanguageProps {
   grouped?: boolean;
 }
 
-export const TranslationTargetLanguage: React.FC<
-  TranslationTargetLanguageProps
-> = React.memo(({ grouped = false }) => {
-  const { t } = useTranslation();
-  const { getSetting, updateSetting, isUpdating } = useSettings();
+export const TranslationTargetLanguage: React.FC<TranslationTargetLanguageProps> =
+  React.memo(({ grouped = false }) => {
+    const { t } = useTranslation();
+    const { getSetting, updateSetting, isUpdating } = useSettings();
 
-  const value = getSetting("translation_target_language") || "en";
+    const value = getSetting("translation_target_language") || "en";
 
-  const options = useMemo(
-    () =>
-      SELECTABLE_LANGUAGES.filter((l) => l.value !== "auto").map((l) => ({
-        value: l.value,
-        label: l.label,
-      })),
-    [],
-  );
+    const options = useMemo(
+      () =>
+        SELECTABLE_LANGUAGES.filter((l) => l.value !== "auto").map((l) => ({
+          value: l.value,
+          label: l.label,
+        })),
+      [],
+    );
 
-  return (
-    <SettingContainer
-      title={t("settings.translation.targetLanguage.title")}
-      description={t("settings.translation.targetLanguage.description")}
-      descriptionMode="tooltip"
-      layout="horizontal"
-      grouped={grouped}
-    >
-      <Dropdown
-        selectedValue={value}
-        options={options}
-        onSelect={(v) => updateSetting("translation_target_language", v)}
-        disabled={isUpdating("translation_target_language")}
-        placeholder={getLanguageLabel(value) || "English"}
-        className="min-w-[200px]"
-      />
-    </SettingContainer>
-  );
-});
+    return (
+      <SettingContainer
+        title={t("settings.translation.targetLanguage.title")}
+        description={t("settings.translation.targetLanguage.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={grouped}
+      >
+        <Dropdown
+          selectedValue={value}
+          options={options}
+          onSelect={(v) => updateSetting("translation_target_language", v)}
+          disabled={isUpdating("translation_target_language")}
+          placeholder={getLanguageLabel(value) || "English"}
+          className="min-w-[200px]"
+        />
+      </SettingContainer>
+    );
+  });
 
 TranslationTargetLanguage.displayName = "TranslationTargetLanguage";
 ```
@@ -568,14 +584,14 @@ import { TranslationTargetLanguage } from "../TranslationTargetLanguage";
 In the `PostProcessingSettings` component's returned JSX, add a new group after the existing prompts group:
 
 ```tsx
-      <SettingsGroup title={t("settings.translation.title")}>
-        <ShortcutInput
-          shortcutId="transcribe_with_translation"
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-        <TranslationTargetLanguage grouped={true} />
-      </SettingsGroup>
+<SettingsGroup title={t("settings.translation.title")}>
+  <ShortcutInput
+    shortcutId="transcribe_with_translation"
+    descriptionMode="tooltip"
+    grouped={true}
+  />
+  <TranslationTargetLanguage grouped={true} />
+</SettingsGroup>
 ```
 
 - [ ] **Step 5: Type-check and lint**
@@ -622,6 +638,7 @@ Temporarily clear the provider model, trigger the translation shortcut, speak. E
 ## Self-Review
 
 **Spec coverage:**
+
 - Dedicated shortcut → Task 1 (binding) + Task 3 (`ACTION_MAP`). ✓
 - Target-language setting (default `"en"`, code-valued) → Task 1. ✓
 - Translate reuses post-processing provider → Task 3 (`run_llm` reuses provider resolution). ✓
@@ -632,5 +649,6 @@ Temporarily clear the provider model, trigger the translation shortcut, speak. E
 - Backward-compatible serde default → Task 1 test. ✓
 
 **Notes / risks:**
+
 - Migration for existing installs: a `settings_store.json` created before this feature won't contain the `transcribe_with_translation` binding. Fresh builds (this repo) get it from `get_default_settings()`. If targeting upgrades, verify the settings-load path merges missing default bindings (see `register_all_shortcuts_for_implementation`, which already references `get_default_settings().bindings`); if it does not, add a one-line merge on load. Out of scope for the primary (fresh-build) case.
 - The no-provider case surfaces only a log line today; the spec mentioned an optional toast. A toast is deferred (not required for a working feature) — add later via the existing `app.emit("...-error", ...)` pattern if desired.

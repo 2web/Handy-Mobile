@@ -33,10 +33,12 @@
 ### Task 1: Generalize the helper, add the cache struct, add i18n keys
 
 **Files:**
+
 - Modify: `src-tauri/src/tray.rs` (helper at line 26, call site at line 276, tests at lines 391–449; add cache struct)
 - Modify: `src/i18n/locales/en/translation.json` (`tray` object), `src/i18n/locales/ru/translation.json` (`tray` object)
 
 **Interfaces:**
+
 - Produces: `pub(crate) fn checked_entries<S: AsRef<str>>(items: &[S], current: &str) -> Vec<(String, bool)>` (replaces `language_menu_entries`); `pub struct PostProcessModelCache` with `new()/get()/set(Vec<String>)`; `TrayStrings.post_process_model`, `TrayStrings.refresh_models`.
 
 - [ ] **Step 1: Add the English i18n keys**
@@ -98,10 +100,13 @@ pub(crate) fn checked_entries<S: AsRef<str>>(items: &[S], current: &str) -> Vec<
 - [ ] **Step 5: Update the language submenu call site (tray.rs:276)**
 
 Change:
+
 ```rust
         for (code, is_active) in language_menu_entries(TRANSLATION_LANGUAGE_SHORTLIST, &current_lang) {
 ```
+
 to:
+
 ```rust
         for (code, is_active) in checked_entries(TRANSLATION_LANGUAGE_SHORTLIST, &current_lang) {
 ```
@@ -162,10 +167,12 @@ git commit -m "refactor(tray): generalize menu-entry helper; add pp-model cache 
 ### Task 2: Refresh helper, startup wiring, submenu, and handlers
 
 **Files:**
+
 - Modify: `src-tauri/src/tray.rs` (`refresh_post_process_models`; the `pp_model_submenu` in `update_tray_menu`; add it to the Idle menu)
 - Modify: `src-tauri/src/lib.rs` (`manage(PostProcessModelCache)`; startup refresh call; two `on_menu_event` arms)
 
 **Interfaces:**
+
 - Consumes: `PostProcessModelCache`, `checked_entries` (Task 1), `strings.post_process_model` / `strings.refresh_models` (Task 1 i18n), `crate::llm_client::fetch_models`, `settings::{get_settings, write_settings}`, `settings.active_post_process_provider()`, `settings.post_process_provider_id`, `settings.post_process_models`, `settings.post_process_api_keys`.
 - Produces: menu ids `pp_model_select:{model}` and `pp_model_refresh`; `pub fn refresh_post_process_models(app: AppHandle)`.
 
@@ -326,6 +333,7 @@ Expected: checkmark tracks selection; the chosen model is used; Refresh picks up
 ## Self-Review
 
 **Spec coverage:**
+
 - Auto-discovered models, cached, non-blocking tray read → Task 1 Step 7 (cache) + Task 2 Steps 1–2. ✅
 - Active provider only; switch `post_process_models[provider]` → Task 2 Step 5. ✅
 - Checkmark on active; current always shown → `checked_entries` (Task 1) + submenu (Task 2). ✅

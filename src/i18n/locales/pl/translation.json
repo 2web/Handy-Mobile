@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Zamknij",
     "cancel": "Anuluj",
+    "translationLanguage": "Język tłumaczenia",
+    "postProcessModel": "Model postprocessingu",
+    "refreshModels": "Odśwież modele",
     "secureInputWarning": "⚠ Skróty zablokowane przez Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Skrót postprocessingu",
             "description": "Opcjonalnie: Dedykowany skrót klawiszowy, który zawsze stosuje postprocessing AI do transkrypcji."
+          },
+          "translate_clipboard": {
+            "name": "Skrót tłumaczenia schowka",
+            "description": "Tłumaczy tekst znajdujący się aktualnie w schowku i wkleja wynik w miejscu kursora."
           }
         },
         "errors": {
@@ -214,9 +221,19 @@
         "noResults": "Nie znaleziono języków",
         "auto": "Automatycznie"
       },
-      "pushToTalk": {
-        "label": "Naciśnij i mów",
-        "description": "Przytrzymaj, aby nagrywać, puść, aby zatrzymać"
+      "shortcutActivation": {
+        "title": "Zachowanie skrótu",
+        "description": "Wybierz, jak skrót transkrypcji rozpoczyna i zatrzymuje nagrywanie.",
+        "options": {
+          "holdOrToggle": "Automatycznie",
+          "pushToTalk": "Przytrzymaj",
+          "toggle": "Przełączaj"
+        },
+        "descriptions": {
+          "hold_or_toggle": "Przytrzymaj, aby nagrywać, lub dotknij, aby przełączyć",
+          "push_to_talk": "Nagrywa, dopóki trzymasz skrót",
+          "toggle": "Dotknij skrótu, aby rozpocząć nagrywanie, dotknij ponownie, aby zatrzymać"
+        }
       }
     },
     "sound": {
@@ -377,6 +394,14 @@
         "title": "Wykrywanie aktywności głosowej",
         "description": "Odfiltrowuje ciszę z nagrań. Modele obsługujące streaming używają dłuższego marginesu VAD; wyłączenie VAD nagrywa surowy dźwięk."
       },
+      "vadBackend": {
+        "title": "Backend wykrywania głosu",
+        "description": "Wybierz detektor używany do filtrowania ciszy. Earshot jest eksperymentalny; wróć do Silero, jeśli mowa jest ucinana lub szum jest zachowywany.",
+        "options": {
+          "silero": "Silero",
+          "earshot": "Earshot"
+        }
+      },
       "fillerWordRemoval": {
         "title": "Usuń wyrazy wypełniające",
         "description": "Usuwa typowe słowa wyrażające wahanie z transkrypcji. Wyłącz, aby je zachować."
@@ -436,6 +461,16 @@
         "createFirst": "Kliknij 'Utwórz nowy prompt' powyżej, aby utworzyć pierwszy prompt postprocessingu."
       }
     },
+    "translation": {
+      "title": "Tłumaczenie",
+      "targetLanguage": {
+        "title": "Język docelowy",
+        "description": "Dyktowanie uruchomione skrótem tłumaczenia jest tłumaczone na ten język przez tego samego dostawcę LLM, który skonfigurowano dla postprocessingu."
+      },
+      "shortcut": {
+        "title": "Skrót tłumaczenia"
+      }
+    },
     "history": {
       "title": "Historia",
       "openFolder": "Otwórz folder nagrań",
@@ -474,7 +509,8 @@
       },
       "updateChecks": {
         "label": "Sprawdzaj aktualizacje",
-        "description": "Automatycznie sprawdzaj nowe wersje Handy"
+        "description": "Automatycznie sprawdzaj nowe wersje Handy",
+        "lockedDescription": "Wyłączone przez konfigurację systemową (HANDY_DISABLE_UPDATER)"
       },
       "soundTheme": {
         "label": "Motyw dźwiękowy",
@@ -537,6 +573,10 @@
         "title": "Opóźnienie wklejania (po)",
         "description": "Opóźnienie (w milisekundach) po klawiszu wklejania, przed przywróceniem poprzedniego schowka. Zwiększ, jeśli zamiast transkrypcji wklejana jest stara zawartość schowka."
       },
+      "holdThreshold": {
+        "title": "Próg przytrzymania",
+        "description": "Tylko w trybie automatycznym: jak długo (w milisekundach) skrót musi być przytrzymany, aby liczył się jako przytrzymanie, a nie dotknięcie. Zmniejsz, jeśli po krótkim przytrzymaniu nagrywanie pozostaje włączone; zwiększ, jeśli celowe dotknięcia są traktowane jako przytrzymanie."
+      },
       "reliablePaste": {
         "title": "Niezawodne wklejanie (Beta)",
         "description": "Przywracaj schowek dopiero po tym, jak docelowa aplikacja faktycznie odczyta transkrypcję, a nie po ustalonym opóźnieniu. Ma naprawić wklejanie starej zawartości schowka przy obciążeniu systemu. Wymaga metody wklejania przez schowek; tylko macOS i Windows."
@@ -571,6 +611,13 @@
         "button": "Podgląd",
         "noNotes": "Nie znaleziono dołączonych informacji o wydaniu",
         "error": "Nie udało się wyświetlić podglądu informacji o wydaniu"
+      },
+      "onboardingPreview": {
+        "title": "Podgląd konfiguracji początkowej",
+        "description": "Wyświetl ekrany konfiguracji początkowej bez zmiany uprawnień, modeli ani stanu ukończenia",
+        "permissionsButton": "Uprawnienia",
+        "modelsButton": "Wybór modelu",
+        "exitButton": "Zakończ podgląd"
       }
     },
     "about": {
