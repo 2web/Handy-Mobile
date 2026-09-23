@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Keluar",
     "cancel": "Batal",
+    "translationLanguage": "Bahasa Terjemahan",
+    "postProcessModel": "Model Pascaproses",
+    "refreshModels": "Segarkan model",
     "secureInputWarning": "⚠ Pintasan diblokir oleh Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Pintasan Pascaproses",
             "description": "Opsional: pintasan khusus yang selalu menerapkan pascaproses AI pada transkripsi Anda."
+          },
+          "translate_clipboard": {
+            "name": "Pintasan Terjemahkan Papan Klip",
+            "description": "Menerjemahkan teks yang saat ini ada di papan klip dan menempelkan hasilnya di posisi kursor."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Batal",
         "selectToEdit": "Pilih prompt di atas untuk melihat dan mengedit detailnya.",
         "createFirst": "Klik 'Buat Prompt Baru' di atas untuk membuat prompt pascaproses pertama Anda."
+      }
+    },
+    "translation": {
+      "title": "Terjemahan",
+      "targetLanguage": {
+        "title": "Bahasa tujuan",
+        "description": "Dikte yang dipicu dengan pintasan terjemahan diterjemahkan ke bahasa ini menggunakan penyedia LLM yang sama dengan yang dikonfigurasi untuk pascaproses."
+      },
+      "shortcut": {
+        "title": "Pintasan terjemahan"
       }
     },
     "history": {

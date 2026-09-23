@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Surt",
     "cancel": "Cancel·la",
+    "translationLanguage": "Idioma de traducció",
+    "postProcessModel": "Model de postprocessament",
+    "refreshModels": "Actualitza els models",
     "secureInputWarning": "⚠ Dreceres blocades per l'entrada segura"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Drecera de postprocessament",
             "description": "Opcional: una drecera específica que sempre aplica postprocessament amb IA a la transcripció."
+          },
+          "translate_clipboard": {
+            "name": "Drecera per traduir el porta-retalls",
+            "description": "Tradueix el text que hi ha ara al porta-retalls i enganxa el resultat a la posició del cursor."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Cancel·leu",
         "selectToEdit": "Seleccioneu una indicació more amunt per veure'n i editar-ne els detalls.",
         "createFirst": "Feu clic a «Creeu una indicació nova» més amunt per crear la primera indicació de postprocessament."
+      }
+    },
+    "translation": {
+      "title": "Traducció",
+      "targetLanguage": {
+        "title": "Idioma de destinació",
+        "description": "El dictat activat amb la drecera de traducció es tradueix a aquest idioma amb el mateix proveïdor d'LLM configurat per al postprocessament."
+      },
+      "shortcut": {
+        "title": "Drecera de traducció"
       }
     },
     "history": {

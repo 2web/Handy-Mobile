@@ -7,6 +7,9 @@
     "model": "模型",
     "quit": "結束",
     "cancel": "取消",
+    "translationLanguage": "翻譯語言",
+    "postProcessModel": "後處理模型",
+    "refreshModels": "重新整理模型",
     "secureInputWarning": "⚠ 快捷鍵被 Secure Input 阻擋"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "後處理快捷鍵",
             "description": "可選：專用快捷鍵，使用時一律對轉錄結果套用 AI 後處理"
+          },
+          "translate_clipboard": {
+            "name": "剪貼簿翻譯快捷鍵",
+            "description": "翻譯目前剪貼簿中的文字，並將結果貼到游標處。"
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "取消",
         "selectToEdit": "選擇上方的提示詞以檢視和編輯其詳細資訊",
         "createFirst": "點選上方的「建立新提示詞」來建立您的第一個後處理提示詞"
+      }
+    },
+    "translation": {
+      "title": "翻譯",
+      "targetLanguage": {
+        "title": "目標語言",
+        "description": "使用翻譯快捷鍵觸發的語音輸入，會透過為後處理設定的同一個 LLM 提供者翻譯成該語言。"
+      },
+      "shortcut": {
+        "title": "翻譯快捷鍵"
       }
     },
     "history": {

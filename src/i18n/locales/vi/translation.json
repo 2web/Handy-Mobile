@@ -7,6 +7,9 @@
     "model": "Mô hình",
     "quit": "Thoát",
     "cancel": "Hủy",
+    "translationLanguage": "Ngôn ngữ dịch",
+    "postProcessModel": "Mô hình xử lý sau",
+    "refreshModels": "Làm mới mô hình",
     "secureInputWarning": "⚠ Phím tắt bị Secure Input chặn"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Phím tắt xử lý sau",
             "description": "Tùy chọn: Phím tắt chuyên dụng luôn áp dụng xử lý sau bằng AI cho bản chuyển đổi của bạn."
+          },
+          "translate_clipboard": {
+            "name": "Phím tắt dịch clipboard",
+            "description": "Dịch văn bản hiện có trong clipboard và dán kết quả tại vị trí con trỏ."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Hủy",
         "selectToEdit": "Chọn một prompt ở trên để xem và chỉnh sửa chi tiết.",
         "createFirst": "Nhấn 'Tạo Prompt mới' ở trên để tạo prompt xử lý sau đầu tiên của bạn."
+      }
+    },
+    "translation": {
+      "title": "Dịch",
+      "targetLanguage": {
+        "title": "Ngôn ngữ đích",
+        "description": "Phần đọc chính tả được kích hoạt bằng phím tắt dịch sẽ được dịch sang ngôn ngữ này bằng chính nhà cung cấp LLM đã cấu hình cho xử lý sau."
+      },
+      "shortcut": {
+        "title": "Phím tắt dịch"
       }
     },
     "history": {

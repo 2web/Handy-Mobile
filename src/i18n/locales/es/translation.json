@@ -7,6 +7,9 @@
     "model": "Modelo",
     "quit": "Salir",
     "cancel": "Cancelar",
+    "translationLanguage": "Idioma de traducción",
+    "postProcessModel": "Modelo de post proceso",
+    "refreshModels": "Actualizar modelos",
     "secureInputWarning": "⚠ Atajos bloqueados por Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Tecla de post procesamiento",
             "description": "Opcional: Una tecla de acceso rápido dedicada que siempre aplica post procesamiento con IA a tu transcripción."
+          },
+          "translate_clipboard": {
+            "name": "Tecla de traducción del portapapeles",
+            "description": "Traduce el texto que está actualmente en el portapapeles y pega el resultado en la posición del cursor."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Cancelar",
         "selectToEdit": "Selecciona un prompt arriba para ver y editar sus detalles.",
         "createFirst": "Haz clic en 'Crear nuevo prompt' arriba para crear tu primer prompt de post procesamiento."
+      }
+    },
+    "translation": {
+      "title": "Traducción",
+      "targetLanguage": {
+        "title": "Idioma de destino",
+        "description": "El dictado iniciado con el atajo de traducción se traduce a este idioma usando el mismo proveedor de LLM configurado para el post proceso."
+      },
+      "shortcut": {
+        "title": "Atajo de traducción"
       }
     },
     "history": {

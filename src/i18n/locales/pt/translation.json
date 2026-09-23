@@ -7,6 +7,9 @@
     "model": "Modelo",
     "quit": "Sair",
     "cancel": "Cancelar",
+    "translationLanguage": "Idioma de Tradução",
+    "postProcessModel": "Modelo de Pós-Processamento",
+    "refreshModels": "Atualizar modelos",
     "secureInputWarning": "⚠ Atalhos bloqueados pelo Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Tecla de Pós-Processamento",
             "description": "Opcional: Uma tecla de atalho dedicada que sempre aplica pós-processamento com IA à sua transcrição."
+          },
+          "translate_clipboard": {
+            "name": "Tecla de Tradução da Área de Transferência",
+            "description": "Traduz o texto que está atualmente na área de transferência e cola o resultado na posição do cursor."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Cancelar",
         "selectToEdit": "Selecione um prompt acima para visualizar e editar seus detalhes.",
         "createFirst": "Clique em 'Criar Novo Prompt' acima para criar seu primeiro prompt de pós-processamento."
+      }
+    },
+    "translation": {
+      "title": "Tradução",
+      "targetLanguage": {
+        "title": "Idioma de destino",
+        "description": "O ditado iniciado com o atalho de tradução é traduzido para este idioma usando o mesmo provedor de LLM configurado para o pós-processamento."
+      },
+      "shortcut": {
+        "title": "Atalho de tradução"
       }
     },
     "history": {

@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Zamknij",
     "cancel": "Anuluj",
+    "translationLanguage": "Język tłumaczenia",
+    "postProcessModel": "Model postprocessingu",
+    "refreshModels": "Odśwież modele",
     "secureInputWarning": "⚠ Skróty zablokowane przez Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Skrót postprocessingu",
             "description": "Opcjonalnie: Dedykowany skrót klawiszowy, który zawsze stosuje postprocessing AI do transkrypcji."
+          },
+          "translate_clipboard": {
+            "name": "Skrót tłumaczenia schowka",
+            "description": "Tłumaczy tekst znajdujący się aktualnie w schowku i wkleja wynik w miejscu kursora."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Anuluj",
         "selectToEdit": "Wybierz prompt powyżej, aby zobaczyć i edytować jego szczegóły.",
         "createFirst": "Kliknij 'Utwórz nowy prompt' powyżej, aby utworzyć pierwszy prompt postprocessingu."
+      }
+    },
+    "translation": {
+      "title": "Tłumaczenie",
+      "targetLanguage": {
+        "title": "Język docelowy",
+        "description": "Dyktowanie uruchomione skrótem tłumaczenia jest tłumaczone na ten język przez tego samego dostawcę LLM, który skonfigurowano dla postprocessingu."
+      },
+      "shortcut": {
+        "title": "Skrót tłumaczenia"
       }
     },
     "history": {

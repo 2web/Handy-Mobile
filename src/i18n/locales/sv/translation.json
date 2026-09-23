@@ -7,6 +7,9 @@
     "model": "Modell",
     "quit": "Avsluta",
     "cancel": "Avbryt",
+    "translationLanguage": "Översättningsspråk",
+    "postProcessModel": "Modell för efterbearbetning",
+    "refreshModels": "Uppdatera modeller",
     "secureInputWarning": "⚠ Kortkommandon blockeras av Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Snabbkommando för efterbearbetning",
             "description": "Valfritt: En dedikerad snabbknapp som alltid tillämpar AI-efterbearbetning på din transkription."
+          },
+          "translate_clipboard": {
+            "name": "Kortkommando för att översätta urklipp",
+            "description": "Översätter texten som just nu finns i urklipp och klistrar in resultatet vid markören."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Avbryt",
         "selectToEdit": "Välj en prompt ovan för att visa och redigera dess detaljer.",
         "createFirst": "Klicka på 'Skapa ny prompt' ovan för att skapa din första prompt för efterbearbetning."
+      }
+    },
+    "translation": {
+      "title": "Översättning",
+      "targetLanguage": {
+        "title": "Målspråk",
+        "description": "Diktering som startas med översättningskommandot översätts till det här språket med samma LLM-leverantör som är konfigurerad för efterbearbetning."
+      },
+      "shortcut": {
+        "title": "Kortkommando för översättning"
       }
     },
     "history": {

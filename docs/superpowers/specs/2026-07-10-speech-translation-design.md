@@ -20,7 +20,7 @@ translation works fully offline.
 ## Motivation
 
 Whisper's built-in translate task only ever targets English (`translate_to_english`
-already exists for that). The user wants to translate their speech into *any*
+already exists for that). The user wants to translate their speech into _any_
 language, offline. The app already has a complete LLM post-processing subsystem
 that can send transcribed text to a local LLM with a prompt — translation is
 exactly such a prompt, so we build a focused UX layer on top rather than a new

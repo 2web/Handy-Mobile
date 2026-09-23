@@ -7,6 +7,9 @@
     "model": "Modello",
     "quit": "Esci",
     "cancel": "Annulla",
+    "translationLanguage": "Lingua di traduzione",
+    "postProcessModel": "Modello di post-elaborazione",
+    "refreshModels": "Aggiorna modelli",
     "secureInputWarning": "⚠ Scorciatoie bloccate da Secure Input"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Tasto di post-elaborazione",
             "description": "Facoltativo: Un tasto di scelta rapida dedicato che applica sempre la post-elaborazione IA alla trascrizione."
+          },
+          "translate_clipboard": {
+            "name": "Tasto di traduzione degli appunti",
+            "description": "Traduce il testo attualmente negli appunti e incolla il risultato in corrispondenza del cursore."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Annulla",
         "selectToEdit": "Scegli un prompt qui sopra per visualizzare o modificare i dettagli.",
         "createFirst": "Clicca 'Crea un nuovo prompt' qui sopra per creare il tuo primo prompt di post-elaborazione."
+      }
+    },
+    "translation": {
+      "title": "Traduzione",
+      "targetLanguage": {
+        "title": "Lingua di destinazione",
+        "description": "La dettatura avviata con la scorciatoia di traduzione viene tradotta in questa lingua usando lo stesso provider LLM configurato per la post-elaborazione."
+      },
+      "shortcut": {
+        "title": "Scorciatoia di traduzione"
       }
     },
     "history": {

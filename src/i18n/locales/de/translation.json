@@ -7,6 +7,9 @@
     "model": "Modell",
     "quit": "Beenden",
     "cancel": "Abbrechen",
+    "translationLanguage": "Übersetzungssprache",
+    "postProcessModel": "Nachbearbeitungsmodell",
+    "refreshModels": "Modelle aktualisieren",
     "secureInputWarning": "⚠ Tastenkürzel durch Secure Input blockiert"
   },
   "sidebar": {
@@ -199,6 +202,10 @@
           "transcribe_with_post_process": {
             "name": "Nachbearbeitungs-Tastenkürzel",
             "description": "Optional: Ein dediziertes Tastenkürzel, das immer die KI-Nachbearbeitung auf deine Transkription anwendet."
+          },
+          "translate_clipboard": {
+            "name": "Tastenkürzel zum Übersetzen der Zwischenablage",
+            "description": "Übersetzt den Text, der sich gerade in der Zwischenablage befindet, und fügt das Ergebnis an der Cursorposition ein."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Abbrechen",
         "selectToEdit": "Wähle oben einen Prompt aus, um dessen Details anzuzeigen und zu bearbeiten.",
         "createFirst": "Klicke oben auf 'Neuen Prompt erstellen', um deinen ersten Nachbearbeitungs-Prompt zu erstellen."
+      }
+    },
+    "translation": {
+      "title": "Übersetzung",
+      "targetLanguage": {
+        "title": "Zielsprache",
+        "description": "Diktate, die mit dem Übersetzungs-Tastenkürzel gestartet werden, werden mit demselben LLM-Anbieter in diese Sprache übersetzt, der für die Nachbearbeitung konfiguriert ist."
+      },
+      "shortcut": {
+        "title": "Übersetzungs-Tastenkürzel"
       }
     },
     "history": {

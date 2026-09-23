@@ -7,6 +7,9 @@
     "model": "Model",
     "quit": "Afsluiten",
     "cancel": "Annuleren",
+    "translationLanguage": "Vertaaltaal",
+    "postProcessModel": "Naverwerkingsmodel",
+    "refreshModels": "Modellen vernieuwen",
     "secureInputWarning": "⚠ Sneltoetsen geblokkeerd door Secure Input"
   },
   "sidebar": {
@@ -179,6 +182,10 @@
           "transcribe_with_post_process": {
             "name": "Sneltoets voor naverwerking",
             "description": "Optioneel: Een specifieke sneltoets die altijd AI-naverwerking toepast op je transcriptie."
+          },
+          "translate_clipboard": {
+            "name": "Sneltoets voor klembord vertalen",
+            "description": "Vertaalt de tekst die nu op het klembord staat en plakt het resultaat op de cursorpositie."
           }
         },
         "errors": {
@@ -452,6 +459,16 @@
         "cancel": "Annuleren",
         "selectToEdit": "Selecteer hierboven een prompt om de details te bekijken en te bewerken.",
         "createFirst": "Klik hierboven op 'Nieuwe prompt maken' om je eerste naverwerkingsprompt aan te maken."
+      }
+    },
+    "translation": {
+      "title": "Vertaling",
+      "targetLanguage": {
+        "title": "Doeltaal",
+        "description": "Dictaat dat met de vertaalsneltoets wordt gestart, wordt naar deze taal vertaald met dezelfde LLM-provider die voor naverwerking is ingesteld."
+      },
+      "shortcut": {
+        "title": "Vertaalsneltoets"
       }
     },
     "history": {
