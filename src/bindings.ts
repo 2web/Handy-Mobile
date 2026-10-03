@@ -934,29 +934,7 @@ async isLaptop() : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
-},
-/**
- * Reparses stored items from their raw text.
- * 
- * Raw text is the source of truth and structure is derived. When the parser
- * gets smarter — and it will — stored items reparse themselves with no
- * re-pasting.
- */
-/**
- * Replays the stored events to rebuild `zones` and `characters`.
- * 
- * The event log itself is never touched. This exists so a fix to the zone
- * pairing rules can be applied to history that is already ingested.
- * 
- * The replay is assembled into one `IngestBatch` and written through
- * `ingest_batch`, the same batched-transaction path `poll_once` uses,
- * rather than one transaction per zone update and character upsert: with
- * thousands of events that was thousands of fsyncs, long enough to hold the
- * database busy past the tracker thread's 5-second `busy_timeout`, and a
- * failure partway through left `zones` and `characters` half-rebuilt with
- * no rollback. `events` is left empty — the events already exist and must
- * not be re-inserted.
- */
+}
 }
 
 /** user-defined events **/
