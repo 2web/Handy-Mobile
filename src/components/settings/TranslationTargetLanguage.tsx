@@ -4,7 +4,7 @@ import { SettingContainer } from "../ui/SettingContainer";
 import { Dropdown } from "@/components/ui";
 import { useSettings } from "../../hooks/useSettings";
 import {
-  SELECTABLE_LANGUAGES,
+  MODEL_CAPABILITY_LANGUAGES,
   getLanguageLabel,
 } from "../../lib/constants/languages";
 
@@ -21,10 +21,16 @@ export const TranslationTargetLanguage: React.FC<TranslationTargetLanguageProps>
 
     const options = useMemo(
       () =>
-        SELECTABLE_LANGUAGES.filter((l) => l.value !== "auto").map((l) => ({
-          value: l.value,
-          label: l.label,
-        })),
+        // Translation output needs an explicit script, so `zh` is offered as its
+        // Simplified / Traditional variants (the tray shortlist uses `zh-Hans`).
+        MODEL_CAPABILITY_LANGUAGES.flatMap((l) =>
+          l.value === "zh"
+            ? [
+                { value: "zh-Hans", label: "Chinese (Simplified)" },
+                { value: "zh-Hant", label: "Chinese (Traditional)" },
+              ]
+            : [{ value: l.value, label: l.label }],
+        ),
       [],
     );
 
