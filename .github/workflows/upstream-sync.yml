@@ -39,6 +39,8 @@ permissions:
 env:
   UPSTREAM_URL: "https://github.com/cjpais/Handy.git"
   UPSTREAM_REF: ${{ inputs.upstream_ref || 'main' }}
+  # В форке gh по умолчанию целится в родителя (cjpais/Handy) → 403 на метках/PR.
+  GH_REPO: ${{ github.repository }}
 
 jobs:
   sync:
