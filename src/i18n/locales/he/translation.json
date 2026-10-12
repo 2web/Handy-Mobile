@@ -725,7 +725,8 @@
   },
   "overlay": {
     "transcribing": "מתמלל...",
-    "processing": "מעבד..."
+    "processing": "מעבד...",
+    "loadingModel": "טוען מודל..."
   },
   "whatsNew": {
     "title": "חדש ב-Handy v{{version}}"

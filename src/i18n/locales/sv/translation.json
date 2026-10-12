@@ -725,7 +725,8 @@
   },
   "overlay": {
     "transcribing": "Transkriberar...",
-    "processing": "Bearbetar..."
+    "processing": "Bearbetar...",
+    "loadingModel": "Laddar modell..."
   },
   "whatsNew": {
     "title": "Nytt i Handy v{{version}}"

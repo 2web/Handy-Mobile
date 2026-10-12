@@ -725,7 +725,8 @@
   },
   "overlay": {
     "transcribing": "Транскрибиране...",
-    "processing": "Обработка..."
+    "processing": "Обработка...",
+    "loadingModel": "Зареждане на модела..."
   },
   "whatsNew": {
     "title": "Ново в Handy v{{version}}"

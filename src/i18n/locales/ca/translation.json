@@ -728,7 +728,8 @@
   },
   "overlay": {
     "transcribing": "S'està transcrivint...",
-    "processing": "S'està processant..."
+    "processing": "S'està processant...",
+    "loadingModel": "S'està carregant el model..."
   },
   "secureInput": {
     "blockedWithCulprit_one": "{{name}} pot estar blocant 1 drecera",
