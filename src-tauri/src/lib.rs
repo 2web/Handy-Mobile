@@ -21,6 +21,8 @@ mod notices;
 mod overlay;
 mod paste_tx;
 pub mod portable;
+#[cfg(target_os = "linux")]
+mod primary_selection;
 mod secure_input;
 mod settings;
 mod shortcut;
@@ -37,7 +39,11 @@ pub use cli::CliArgs;
 #[cfg(debug_assertions)]
 use specta_typescript::{BigIntExportBehavior, Typescript};
 use tauri_specta::{collect_commands, collect_events, Builder};
+#[cfg(target_os = "linux")]
+pub use utils::apply_handy_gdk_backend;
 pub use utils::env_flag_enabled;
+#[cfg(target_os = "linux")]
+pub use utils::{disable_gamescope_wsi_layer, gamescope_wsi_disabled_by_handy};
 
 use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
@@ -245,7 +251,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // Choose the appropriate initial icon based on theme
     let initial_icon_path = tray::get_icon_path(initial_theme, tray::TrayIconState::Idle, false);
 
-    let mut tray_builder = TrayIconBuilder::new()
+    let mut tray_builder = TrayIconBuilder::with_id("handy")
         .icon(
             Image::from_path(
                 app_handle
@@ -996,6 +1002,19 @@ pub fn run(cli_args: CliArgs) {
                 std::env::var_os("VK_LOADER_LAYERS_DISABLE"),
                 utils::env_flag_enabled("HANDY_KEEP_VULKAN_IMPLICIT_LAYERS"),
             );
+            #[cfg(target_os = "linux")]
+            log::info!(
+                "GTK backend: GDK_BACKEND={:?}, HANDY_GDK_BACKEND={:?} (applied: {})",
+                std::env::var_os("GDK_BACKEND"),
+                std::env::var_os("HANDY_GDK_BACKEND"),
+                std::env::var("HANDY_GDK_BACKEND").is_ok_and(|v| !v.trim().is_empty()),
+            );
+            #[cfg(target_os = "linux")]
+            log::info!(
+                "Gamescope WSI layer policy: DISABLE_GAMESCOPE_WSI={:?} (set by Handy: {})",
+                std::env::var_os("DISABLE_GAMESCOPE_WSI"),
+                utils::gamescope_wsi_disabled_by_handy(),
+            );
             system_languages::log_system_languages();
 
             specta_builder.mount_events(app);
@@ -1122,6 +1141,8 @@ pub fn run(cli_args: CliArgs) {
             // Only forward logs to the webview while debug mode is on (the live log
             // viewer is the sole consumer and only exists in debug mode). This also
             // honors the runtime `--debug` override applied to `settings` above.
+            // Build the runtime first: its Trace logs would re-enter spawn() mid-init and deadlock.
+            let _ = tauri::async_runtime::handle();
             WEBVIEW_LOG_STREAMING.store(settings.debug_mode, Ordering::Relaxed);
             let app_handle = app.handle().clone();
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
@@ -1174,6 +1195,18 @@ pub fn run(cli_args: CliArgs) {
             let tray_available = settings.show_tray_icon && !cli_args.no_tray;
             if should_force_show || !should_hide || !tray_available {
                 show_main_window(&app_handle);
+            }
+
+            // Handy wasn't running, so no single-instance callback handles this flag; do it here (#2554).
+            // Must stay at the end of setup(): recording starts immediately and needs the managers, tray and overlay.
+            if cli_args.toggle_transcription {
+                signal_handle::send_transcription_input(&app_handle, "transcribe", "CLI");
+            } else if cli_args.toggle_post_process {
+                signal_handle::send_transcription_input(
+                    &app_handle,
+                    "transcribe_with_post_process",
+                    "CLI",
+                );
             }
 
             Ok(())
